@@ -1,6 +1,7 @@
 import java.awt.Color;
 import uchicago.src.sim.gui.Drawable;
 import uchicago.src.sim.gui.SimGraphics;
+import uchicago.src.sim.space.Object2DGrid;
 
 
 /**
@@ -13,41 +14,69 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 
 	private int x;
 	private int y;
-	private int stepsToLive;
+	private int vX;
+	private int vY;
+	private int energy;
 	private static int IDNumber = 0;
 	private int ID;
-	
-	
+	private RabbitsGrassSimulationSpace rgSpace;
+	private boolean hasBirthed = false;
+
+
 	public void draw(SimGraphics arg0) {
-		if (stepsToLive>10) {
-			arg0.drawFastRoundRect(Color.white);			
-		}
-		else arg0.drawFastRoundRect(Color.blue);
-				
+		arg0.drawFastCircle(Color.white);
 	}
-	
+
 	public RabbitsGrassSimulationAgent(int rabbitLifespan) {
 		x = -1;
-	    y = -1;
-	    stepsToLive =rabbitLifespan;
-	    IDNumber++;
-	    ID = IDNumber;
+		y = -1;
+		energy = rabbitLifespan;
+		setVxVy();
+		IDNumber++;
+		ID = IDNumber;
 	}
-	
+
 	public void setXY(int newX, int newY) {
 		x = newX;
 		y = newY;
 	}
-	
+
+	private void setVxVy(){
+		vX = 0;
+		vY = 0;
+		int choice = (int)Math.floor(Math.random()*4);
+		switch(choice) {
+		case 0 : 
+			vX = 1;
+			vY = 0;
+			break;
+		case 1 : 
+			vX = -1;
+			vY = 0;
+			break;
+		case 2 : 
+			vX = 0;
+			vY = 1;
+			break;
+		case 3 : 
+			vX = 0;
+			vY = -1;
+			break;
+		}
+	}
+
+	public void setRabbitsGrassSimulationSpace(RabbitsGrassSimulationSpace rgs) {
+		rgSpace = rgs;
+	}
 
 	public String getID(){
-	    return "A-" + ID;
-	  }
-	
+		return "A-" + ID;
+	}
+
 	public void report(){
-	    System.out.println(getID() + " at " + x + ", " + y + " and " + getStepsToLive() + " steps to live.");
-	  }
-	
+		System.out.println(getID() + " at " + x + ", " + y + " and " + getEnergy() + " steps to live.");
+	}
+
 	public int getX() {
 		return x;
 	}
@@ -64,16 +93,80 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		this.y = y;
 	}
 
-	public int getStepsToLive() {
-		return stepsToLive;
+	public int getEnergy() {
+		return energy;
 	}
 
-	public void setStepsToLive(int stepsToLive) {
-		this.stepsToLive = stepsToLive;
+	public void setEnergy(int energy) {
+		this.energy = energy;
+	}
+
+	public int getvX() {
+		return vX;
+	}
+
+	public void setvX(int vX) {
+		this.vX = vX;
+	}
+
+	public int getvY() {
+		return vY;
+	}
+
+	public void setvY(int vY) {
+		this.vY = vY;
+	}
+
+	public static int getIDNumber() {
+		return IDNumber;
+	}
+
+	public static void setIDNumber(int iDNumber) {
+		IDNumber = iDNumber;
+	}
+
+	public RabbitsGrassSimulationSpace getRgSpace() {
+		return rgSpace;
+	}
+
+	public void setRgSpace(RabbitsGrassSimulationSpace rgSpace) {
+		this.rgSpace = rgSpace;
+	}
+
+	public boolean isHasBirthed() {
+		return hasBirthed;
+	}
+
+	public void setHasBirthed(boolean hasBirthed) {
+		this.hasBirthed = hasBirthed;
+	}
+
+	public void setID(int iD) {
+		ID = iD;
 	}
 
 	public void step() {
-		stepsToLive--;
+		// we call setVxVy at the beginning of each step so that the rabbit gets a new vector to move to
+		setVxVy(); 
+		int newX = x + vX;
+	    int newY = y + vY;
+
+	    Object2DGrid grid = rgSpace.getCurrentAgentSpace();
+	    newX = (newX + grid.getSizeX()) % grid.getSizeX();
+	    newY = (newY + grid.getSizeY()) % grid.getSizeY();
+
+	    if(tryMove(newX, newY)){
+	    	energy += rgSpace.eatGrassAt(x, y);
+	    }
+	    else {
+	    	setVxVy();
+	    }
+	    
+		energy--;
 	}
+	
+	private boolean tryMove(int newX, int newY){
+	    return rgSpace.moveAgentAt(x, y, newX, newY);
+	  }
 
 }

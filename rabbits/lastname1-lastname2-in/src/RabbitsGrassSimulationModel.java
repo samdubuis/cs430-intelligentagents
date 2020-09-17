@@ -41,6 +41,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	private int birthThreshold;
 	private int rabbitLifespan = RABBIT_LIFESPAN;
 
+	//--------------------------------------------------------
+
 	public static void main(String[] args) {
 
 		System.out.println("Rabbit skeleton");
@@ -106,19 +108,29 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 					rga.step();
 				}
 				
+				// kills rabbit at 0 energy
+				reapDeadAgents();
+				
+				//grows grass based on rate
+				growGrass(grassGrowthRate);
+				
+				//birth new rabbit for those that have enough energy
+				birthNewAgent(birthThreshold);
+				
 				displaySurface.updateDisplay();
 			}
 		}
-
 		schedule.scheduleActionBeginning(0, new RabbitGrassSimulationStep());
 
+		// schedule for counting and displaying number of rabbits alive
 		class RabbitGrassSimulationCountLiving extends BasicAction {
 			public void execute(){
 				countLivingAgents();
 			}
-		}
-
+		}		
 		schedule.scheduleActionAtInterval(10, new RabbitGrassSimulationCountLiving());
+
+
 	}
 
 	public void buildDisplay(){
@@ -137,8 +149,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		displayAgents.setObjectList(agentList);
 
 
-		displaySurface.addDisplayable(displayGrass, "Money");
-		displaySurface.addDisplayable(displayAgents, "Agents");
+		displaySurface.addDisplayableProbeable(displayGrass, "Grass");
+		displaySurface.addDisplayableProbeable(displayAgents, "Agents");
 	}
 
 	public String[] getInitParam() {
@@ -156,16 +168,49 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	}
 
 	private int countLivingAgents(){
-	    int livingAgents = 0;
-	    for(int i = 0; i < agentList.size(); i++){
-	      RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
-	      if(rga.getStepsToLive() > 0) livingAgents++;
-	    }
-	    System.out.println("Number of living agents is: " + livingAgents);
+		int livingAgents = 0;
+		for(int i = 0; i < agentList.size(); i++){
+			RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
+			if(rga.getEnergy() > 0) livingAgents++;
+		}
+		System.out.println("Number of living agents is: " + livingAgents);
 
-	    return livingAgents;
-	  }
+		return livingAgents;
+	}
+
+	// changed the return to void as we do not need to count the number of dead rabbits
+	private void reapDeadAgents(){
+		for(int i = (agentList.size() - 1); i >= 0 ; i--){
+			RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
+			if(rga.getEnergy() < 1){
+				rgSpace.removeAgentAt(rga.getX(), rga.getY());
+				agentList.remove(i);
+			}
+		}
+	}
 	
+	// function called every tick that reads all agents, and if they have enough energy, 
+	// and have not yet birthed, reproduce
+	private void birthNewAgent(int birthThreshold) {
+		// max defined before so that the loop size doesnt change while we add new agents
+		int max = agentList.size();
+		for (int i = 0; i < max; i++) {
+			RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
+			if (rga.getEnergy() > birthThreshold && !rga.isHasBirthed()) {
+				addNewAgent();
+				int actual_energy = rga.getEnergy();
+				rga.setEnergy(actual_energy-birthThreshold);
+				rga.setHasBirthed(true);
+			}
+		}
+	}
+	
+	//function that calls the "initialization" of the grass so that it repopulates every tick
+	private void growGrass(int grassGrowthRate) {
+		rgSpace.spreadGrass(grassGrowthRate);
+	}
+
+
 	public String getName() {
 		// TODO Auto-generated method stub
 		return null;

@@ -42,7 +42,7 @@ public class RabbitsGrassSimulationSpace {
 			i = ((Integer)grassGrid.getObjectAt(x, y)).intValue();
 		}
 		else { 
-			i=0;
+			i=(Integer)0;
 		}
 		return i;
 	}
@@ -72,6 +72,7 @@ public class RabbitsGrassSimulationSpace {
 			if(isCellOccupied(x,y) == false){
 				agentGrid.putObjectAt(x,y,agent);
 				agent.setXY(x,y);
+				agent.setRabbitsGrassSimulationSpace(this);
 				retVal = true;
 			}
 			count++;
@@ -79,5 +80,27 @@ public class RabbitsGrassSimulationSpace {
 
 		return retVal;
 	}
+	
+	public void removeAgentAt(int x, int y){
+	    agentGrid.putObjectAt(x, y, null);
+	  }
+	
+	public int eatGrassAt(int x, int y) {
+		int grass = getGrassAt(x, y);
+		grassGrid.putObjectAt(x, y, new Integer(0));
+		return grass;
+	}
+	
+	public boolean moveAgentAt(int x, int y, int newX, int newY){
+	    boolean retVal = false;
+	    if(!isCellOccupied(newX, newY)){
+	      RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentGrid.getObjectAt(x, y);
+	      removeAgentAt(x,y);
+	      rga.setXY(newX, newY);
+	      agentGrid.putObjectAt(newX, newY, rga);
+	      retVal = true;
+	    }
+	    return retVal;
+	  }
 
 }
