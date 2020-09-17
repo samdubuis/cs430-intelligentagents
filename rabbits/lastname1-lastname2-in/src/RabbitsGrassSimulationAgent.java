@@ -1,3 +1,4 @@
+import java.awt.Color;
 import uchicago.src.sim.gui.Drawable;
 import uchicago.src.sim.gui.SimGraphics;
 
@@ -12,22 +13,41 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 
 	private int x;
 	private int y;
-	private int grass;
 	private int stepsToLive;
+	private static int IDNumber = 0;
+	private int ID;
+	
 	
 	public void draw(SimGraphics arg0) {
-		// TODO Auto-generated method stub
-		
+		if (stepsToLive>10) {
+			arg0.drawFastRoundRect(Color.white);			
+		}
+		else arg0.drawFastRoundRect(Color.blue);
+				
 	}
 	
 	public RabbitsGrassSimulationAgent(int rabbitLifespan) {
 		x = -1;
 	    y = -1;
-	    grass = 0;
 	    stepsToLive =rabbitLifespan;
+	    IDNumber++;
+	    ID = IDNumber;
+	}
+	
+	public void setXY(int newX, int newY) {
+		x = newX;
+		y = newY;
 	}
 	
 
+	public String getID(){
+	    return "A-" + ID;
+	  }
+	
+	public void report(){
+	    System.out.println(getID() + " at " + x + ", " + y + " and " + getStepsToLive() + " steps to live.");
+	  }
+	
 	public int getX() {
 		return x;
 	}
@@ -44,14 +64,6 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		this.y = y;
 	}
 
-	public int getGrass() {
-		return grass;
-	}
-
-	public void setGrass(int grass) {
-		this.grass = grass;
-	}
-
 	public int getStepsToLive() {
 		return stepsToLive;
 	}
@@ -60,6 +72,8 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		this.stepsToLive = stepsToLive;
 	}
 
-	
+	public void step() {
+		stepsToLive--;
+	}
 
 }

@@ -29,13 +29,13 @@ public class RabbitsGrassSimulationSpace {
 
 			// Get the value of the object at those coordinates
 			int currentValue = getGrassAt(x, y);
-			
+
 			// Replace the Integer object with another one with the new value
 			grassGrid.putObjectAt(x,y,currentValue+1);
 
 		}
 	}
-	
+
 	public int getGrassAt(int x, int y) {
 		int i;
 		if (grassGrid.getObjectAt(x, y)!=null) {
@@ -46,9 +46,38 @@ public class RabbitsGrassSimulationSpace {
 		}
 		return i;
 	}
-	
+
 	public Object2DTorus getCurrentRabbitGrassSpace() {
 		return grassGrid;
+	}
+
+	public Object2DTorus getCurrentAgentSpace(){
+	    return agentGrid;
+	  }
+	
+	public boolean isCellOccupied(int x, int y){
+		boolean retVal = false;
+		if(agentGrid.getObjectAt(x, y)!=null) retVal = true;
+		return retVal;
+	}
+
+	public boolean addAgent(RabbitsGrassSimulationAgent agent){
+		boolean retVal = false;
+		int count = 0;
+		int countLimit = 10 * agentGrid.getSizeX() * agentGrid.getSizeY();
+
+		while((retVal==false) && (count < countLimit)){
+			int x = (int)(Math.random()*(agentGrid.getSizeX()));
+			int y = (int)(Math.random()*(agentGrid.getSizeY()));
+			if(isCellOccupied(x,y) == false){
+				agentGrid.putObjectAt(x,y,agent);
+				agent.setXY(x,y);
+				retVal = true;
+			}
+			count++;
+		}
+
+		return retVal;
 	}
 
 }
