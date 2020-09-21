@@ -1,15 +1,15 @@
-import java.awt.Color;
-import java.util.ArrayList;
-
 import uchicago.src.sim.engine.BasicAction;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimInit;
 import uchicago.src.sim.engine.SimModelImpl;
-import uchicago.src.sim.gui.DisplaySurface;
 import uchicago.src.sim.gui.ColorMap;
+import uchicago.src.sim.gui.DisplaySurface;
 import uchicago.src.sim.gui.Object2DDisplay;
 import uchicago.src.sim.gui.Value2DDisplay;
 import uchicago.src.sim.util.SimUtilities;
+
+import java.awt.*;
+import java.util.ArrayList;
 
 /**
  * Class that implements the simulation model for the rabbits grass
@@ -17,11 +17,11 @@ import uchicago.src.sim.util.SimUtilities;
  * order to run Repast simulation. It manages the entire RePast
  * environment and the simulation.
  *
- * @author 
+ * @author
  */
 
 
-public class RabbitsGrassSimulationModel extends SimModelImpl {		
+public class RabbitsGrassSimulationModel extends SimModelImpl {
 
 
 	// Default values
@@ -32,10 +32,10 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	private Schedule schedule;
 	private RabbitsGrassSimulationSpace rgSpace;
 	private DisplaySurface displaySurface;
-	private ArrayList agentList;
+	private ArrayList<RabbitsGrassSimulationAgent> agentList;
 
-	private int numInitRabbits;
 	private int gridSize = GRIDSIZE;
+	private int numInitRabbits;
 	private int numInitGrass;
 	private int grassGrowthRate;
 	private int birthThreshold;
@@ -60,11 +60,11 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	public void setup() {
 		System.out.println("Running setup");
 		rgSpace = null;
-		agentList = new ArrayList();
+		agentList = new ArrayList<>();
 		schedule = new Schedule();
 
 		//display surface part
-		if (displaySurface != null){
+		if (displaySurface != null) {
 			displaySurface.dispose();
 		}
 		displaySurface = null;
@@ -83,64 +83,62 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 
 	}
 
-	public void buildModel(){
-		System.out.println("running buildmodel");
+	public void buildModel() {
+		System.out.println("running buildModel");
 		rgSpace = new RabbitsGrassSimulationSpace(gridSize, gridSize);
 		rgSpace.spreadGrass(numInitGrass);
 
 		for (int i = 0; i < numInitRabbits; i++) {
 			addNewAgent();
 		}
-		for (int i = 0; i < agentList.size(); i++) {
-			RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
+		for (RabbitsGrassSimulationAgent rga : agentList) {
 			rga.report();
 		}
 	}
 
-	public void buildSchedule(){
-		System.out.println("running buildschedule");
+	public void buildSchedule() {
+		System.out.println("running buildSchedule");
 
-		class RabbitGrassSimulationStep extends BasicAction {
+		// schedule for simulation step
+		schedule.scheduleActionBeginning(0, new BasicAction() {
+			@Override
 			public void execute() {
 				SimUtilities.shuffle(agentList);
-				for(int i =0; i < agentList.size(); i++){
-					RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
+				for (RabbitsGrassSimulationAgent rga : agentList) {
 					rga.step();
 				}
-				
+
 				// kills rabbit at 0 energy
 				reapDeadAgents();
-				
+
 				//grows grass based on rate
 				growGrass(grassGrowthRate);
-				
+
 				//birth new rabbit for those that have enough energy
 				birthNewAgent(birthThreshold);
-				
+
 				displaySurface.updateDisplay();
 			}
-		}
-		schedule.scheduleActionBeginning(0, new RabbitGrassSimulationStep());
+		});
 
 		// schedule for counting and displaying number of rabbits alive
-		class RabbitGrassSimulationCountLiving extends BasicAction {
-			public void execute(){
+		schedule.scheduleActionAtInterval(10, new BasicAction() {
+			@Override
+			public void execute() {
 				countLivingAgents();
 			}
-		}		
-		schedule.scheduleActionAtInterval(10, new RabbitGrassSimulationCountLiving());
+		});
 
 
 	}
 
-	public void buildDisplay(){
-		System.out.println("running builddisplay");
-		ColorMap map = new ColorMap();
+	public void buildDisplay() {
+		System.out.println("running buildDisplay");
 
-		for(int i = 1; i<16; i++){
-			map.mapColor(i, new Color(0, 255, 0));
+		ColorMap map = new ColorMap();
+		for (int i = 0; i < 16; i++) {
+			map.mapColor(i, new Color(0, i * 255 / 15, 0));
 		}
-		map.mapColor(0, Color.black);
 
 		Value2DDisplay displayGrass =
 				new Value2DDisplay(rgSpace.getCurrentRabbitGrassSpace(), map);
@@ -154,57 +152,55 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	}
 
 	public String[] getInitParam() {
-		// TODO Auto-generated method stub
 		// Parameters to be set by users via the Repast UI slider bar
 		// Do "not" modify the parameters names provided in the skeleton code, you can add more if you want 
-		String[] params = { "GridSize", "NumInitRabbits", "NumInitGrass", "GrassGrowthRate", "BirthThreshold", "RabbitLifespan"};
+		String[] params = {"GridSize", "NumInitRabbits", "NumInitGrass", "GrassGrowthRate", "BirthThreshold", "RabbitLifespan"};
 		return params;
 	}
 
-	private void addNewAgent(){
+	private void addNewAgent() {
 		RabbitsGrassSimulationAgent a = new RabbitsGrassSimulationAgent(rabbitLifespan);
 		agentList.add(a);
 		rgSpace.addAgent(a);
 	}
 
-	private int countLivingAgents(){
+	private int countLivingAgents() {
 		int livingAgents = 0;
-		for(int i = 0; i < agentList.size(); i++){
-			RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
-			if(rga.getEnergy() > 0) livingAgents++;
+		for (RabbitsGrassSimulationAgent rga : agentList) {
+			if (rga.getEnergy() > 0) livingAgents++;
 		}
 		System.out.println("Number of living agents is: " + livingAgents);
-
 		return livingAgents;
 	}
 
 	// changed the return to void as we do not need to count the number of dead rabbits
-	private void reapDeadAgents(){
-		for(int i = (agentList.size() - 1); i >= 0 ; i--){
-			RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
-			if(rga.getEnergy() < 1){
+	private void reapDeadAgents() {
+		for (int i = (agentList.size() - 1); i >= 0; i--) {
+			RabbitsGrassSimulationAgent rga = agentList.get(i);
+			if (rga.getEnergy() <= 0) {
 				rgSpace.removeAgentAt(rga.getX(), rga.getY());
 				agentList.remove(i);
 			}
 		}
 	}
-	
+
 	// function called every tick that reads all agents, and if they have enough energy, 
 	// and have not yet birthed, reproduce
 	private void birthNewAgent(int birthThreshold) {
 		// max defined before so that the loop size doesnt change while we add new agents
 		int max = agentList.size();
 		for (int i = 0; i < max; i++) {
-			RabbitsGrassSimulationAgent rga = (RabbitsGrassSimulationAgent)agentList.get(i);
+			RabbitsGrassSimulationAgent rga = agentList.get(i);
 			if (rga.getEnergy() > birthThreshold && !rga.isHasBirthed()) {
 				addNewAgent();
 				int actual_energy = rga.getEnergy();
-				rga.setEnergy(actual_energy-birthThreshold);
+				rga.setEnergy(actual_energy - birthThreshold);
+				// TODO: I don't think this is needed. Rabbits can only reproduce once in the SAME simulation step, but can reproduce again later on.
 				rga.setHasBirthed(true);
 			}
 		}
 	}
-	
+
 	//function that calls the "initialization" of the grass so that it repopulates every tick
 	private void growGrass(int grassGrowthRate) {
 		rgSpace.spreadGrass(grassGrowthRate);
@@ -212,8 +208,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 
 
 	public String getName() {
-		// TODO Auto-generated method stub
-		return null;
+		return "Rabbit Grass Simulation";
 	}
 
 	public Schedule getSchedule() {
@@ -271,7 +266,6 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	public void setRabbitLifespan(int rabbitLifespan) {
 		this.rabbitLifespan = rabbitLifespan;
 	}
-
 
 
 }

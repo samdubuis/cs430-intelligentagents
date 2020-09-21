@@ -1,12 +1,13 @@
-import java.awt.Color;
 import uchicago.src.sim.gui.Drawable;
 import uchicago.src.sim.gui.SimGraphics;
 import uchicago.src.sim.space.Object2DGrid;
 
+import java.awt.*;
+
 
 /**
  * Class that implements the simulation agent for the rabbits grass simulation.
-
+ *
  * @author
  */
 
@@ -41,24 +42,24 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		y = newY;
 	}
 
-	private void setVxVy(){
+	private void setVxVy() {
 		vX = 0;
 		vY = 0;
-		int choice = (int)Math.floor(Math.random()*4);
-		switch(choice) {
-		case 0 : 
+		int choice = (int) Math.floor(Math.random() * 4);
+		switch (choice) {
+		case 0:
 			vX = 1;
 			vY = 0;
 			break;
-		case 1 : 
+		case 1:
 			vX = -1;
 			vY = 0;
 			break;
-		case 2 : 
+		case 2:
 			vX = 0;
 			vY = 1;
 			break;
-		case 3 : 
+		case 3:
 			vX = 0;
 			vY = -1;
 			break;
@@ -69,12 +70,16 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		rgSpace = rgs;
 	}
 
-	public String getID(){
+	public void report() {
+		System.out.println(getID() + " at " + x + ", " + y + " and " + getEnergy() + " steps to live.");
+	}
+
+	public String getID() {
 		return "A-" + ID;
 	}
 
-	public void report(){
-		System.out.println(getID() + " at " + x + ", " + y + " and " + getEnergy() + " steps to live.");
+	public void setID(int iD) {
+		ID = iD;
 	}
 
 	public int getX() {
@@ -101,19 +106,19 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		this.energy = energy;
 	}
 
-	public int getvX() {
+	public int getVX() {
 		return vX;
 	}
 
-	public void setvX(int vX) {
+	public void setVX(int vX) {
 		this.vX = vX;
 	}
 
-	public int getvY() {
+	public int getVY() {
 		return vY;
 	}
 
-	public void setvY(int vY) {
+	public void setVY(int vY) {
 		this.vY = vY;
 	}
 
@@ -141,32 +146,27 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		this.hasBirthed = hasBirthed;
 	}
 
-	public void setID(int iD) {
-		ID = iD;
-	}
-
 	public void step() {
 		// we call setVxVy at the beginning of each step so that the rabbit gets a new vector to move to
-		setVxVy(); 
+		setVxVy();
 		int newX = x + vX;
-	    int newY = y + vY;
+		int newY = y + vY;
 
-	    Object2DGrid grid = rgSpace.getCurrentAgentSpace();
-	    newX = (newX + grid.getSizeX()) % grid.getSizeX();
-	    newY = (newY + grid.getSizeY()) % grid.getSizeY();
+		Object2DGrid grid = rgSpace.getCurrentAgentSpace();
+		newX = (newX + grid.getSizeX()) % grid.getSizeX();
+		newY = (newY + grid.getSizeY()) % grid.getSizeY();
 
-	    if(tryMove(newX, newY)){
-	    	energy += rgSpace.eatGrassAt(x, y);
-	    }
-	    else {
-	    	setVxVy();
-	    }
-	    
+		if (tryMove(newX, newY)) {
+			// TODO: should rabbit also eat grass if it didn't manage to move?
+			energy += rgSpace.eatGrassAt(x, y);
+		}
+		// no need to reset direction after collision, direction is reset at every tick
+
 		energy--;
 	}
-	
-	private boolean tryMove(int newX, int newY){
-	    return rgSpace.moveAgentAt(x, y, newX, newY);
-	  }
+
+	private boolean tryMove(int newX, int newY) {
+		return rgSpace.moveAgentAt(x, y, newX, newY);
+	}
 
 }
