@@ -60,6 +60,16 @@ public class RabbitsGrassSimulationSpace {
 		return grass;
 	}
 
+	public int countGrass() {
+		int totalGrass = 0;
+		for (int i = 0; i < grassGrid.getSizeX(); i++) {
+			for (int j = 0; j < grassGrid.getSizeY(); j++) {
+				totalGrass += getGrassAt(i, j);
+			}
+		}
+		return totalGrass;
+	}
+
 	public boolean isCellOccupied(int x, int y) {
 		return agentGrid.getObjectAt(x, y) != null;
 	}

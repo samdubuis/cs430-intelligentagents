@@ -9,6 +9,7 @@ import uchicago.src.sim.gui.ColorMap;
 import uchicago.src.sim.gui.DisplaySurface;
 import uchicago.src.sim.gui.Object2DDisplay;
 import uchicago.src.sim.gui.Value2DDisplay;
+import uchicago.src.sim.space.Object2DTorus;
 import uchicago.src.sim.util.SimUtilities;
 
 import java.awt.*;
@@ -161,11 +162,11 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		displaySurface.addDisplayableProbeable(displayGrass, "Grass");
 		displaySurface.addDisplayableProbeable(displayAgents, "Agents");
 
-		// Build population plot
+		// Build population plots
 		class PopulationInSpace implements DataSource, Sequence {
 			@Override
 			public Object execute() {
-				return new Double(getSValue());
+				return getSValue();
 			}
 
 			@Override
@@ -174,6 +175,20 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 			}
 		}
 		graphPopulation.addSequence("Number of rabbits in space", new PopulationInSpace());
+
+		class GrassInSpace implements DataSource, Sequence {
+			@Override
+			public Object execute() {
+				return getSValue();
+			}
+
+			@Override
+			public double getSValue() {
+				Object2DTorus rgs = rgSpace.getCurrentRabbitGrassSpace();
+				return (double) rgSpace.countGrass() / (rgs.getSizeX() * rgs.getSizeY());
+			}
+		}
+		graphPopulation.addSequence("Amount of grass in space per cell", new GrassInSpace());
 	}
 
 	public String[] getInitParam() {
