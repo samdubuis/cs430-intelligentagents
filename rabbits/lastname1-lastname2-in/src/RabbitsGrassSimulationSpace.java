@@ -44,7 +44,7 @@ public class RabbitsGrassSimulationSpace {
 			// limit the grass count on one spot to 16 (0-15)
 			if (currentValue <= 15) {
 				// Replace the Integer object with another one with the new value
-				grassGrid.putObjectAt(x, y, new Integer(currentValue + 1);
+				grassGrid.putObjectAt(x, y, new Integer(currentValue + 1));
 			}		
 
 		}
