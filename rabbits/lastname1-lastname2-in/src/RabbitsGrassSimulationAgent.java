@@ -21,7 +21,7 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 	private static int IDNumber = 0;
 	private int ID;
 	private RabbitsGrassSimulationSpace rgSpace;
-	private boolean hasBirthed = false;
+//	private boolean hasBirthed = false;
 
 
 	public void draw(SimGraphics arg0) {
@@ -46,6 +46,7 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		vX = 0;
 		vY = 0;
 		int choice = (int) Math.floor(Math.random() * 4);
+		// the rabbit can only move in the cardinal directions NESW
 		switch (choice) {
 		case 0:
 			vX = 1;
@@ -138,13 +139,13 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		this.rgSpace = rgSpace;
 	}
 
-	public boolean isHasBirthed() {
-		return hasBirthed;
-	}
-
-	public void setHasBirthed(boolean hasBirthed) {
-		this.hasBirthed = hasBirthed;
-	}
+//	public boolean isHasBirthed() {
+//		return hasBirthed;
+//	}
+//
+//	public void setHasBirthed(boolean hasBirthed) {
+//		this.hasBirthed = hasBirthed;
+//	}
 
 	public void step() {
 		// we call setVxVy at the beginning of each step so that the rabbit gets a new vector to move to

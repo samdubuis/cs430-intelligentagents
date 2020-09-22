@@ -102,6 +102,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		rgSpace = new RabbitsGrassSimulationSpace(gridSize, gridSize);
 		rgSpace.spreadGrass(numInitGrass);
 
+		// create agents based on numbered of inital rabbits
 		for (int i = 0; i < numInitRabbits; i++) {
 			addNewAgent();
 		}
@@ -147,12 +148,13 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 
 	public void buildDisplay() {
 		System.out.println("running buildDisplay");
-
+			
 		ColorMap map = new ColorMap();
 		for (int i = 0; i < 16; i++) {
 			map.mapColor(i, new Color(0, i * 255 / 15, 0));
 		}
 
+		// grass values are mapped to a ColorMap for displaying
 		Value2DDisplay displayGrass =
 				new Value2DDisplay(rgSpace.getCurrentRabbitGrassSpace(), map);
 
@@ -160,7 +162,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		displayAgents.setObjectList(agentList);
 
 		displaySurface.addDisplayableProbeable(displayGrass, "Grass");
-		displaySurface.addDisplayableProbeable(displayAgents, "Agents");
+		displaySurface.addDisplayableProbeable(displayAgents, "Rabbits");
 
 		// Build population plots
 		class PopulationInSpace implements DataSource, Sequence {
@@ -231,12 +233,12 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		int max = agentList.size();
 		for (int i = 0; i < max; i++) {
 			RabbitsGrassSimulationAgent rga = agentList.get(i);
-			if (rga.getEnergy() > birthThreshold && !rga.isHasBirthed()) {
+			if (rga.getEnergy() > birthThreshold) {
 				addNewAgent();
 				int actual_energy = rga.getEnergy();
 				rga.setEnergy(actual_energy - birthThreshold);
-				// TODO: I don't think this is needed. Rabbits can only reproduce once in the SAME simulation step, but can reproduce again later on.
-				rga.setHasBirthed(true);
+				// corrected, rabbit can reproduce once per STEP
+//				rga.setHasBirthed(true);
 			}
 		}
 	}

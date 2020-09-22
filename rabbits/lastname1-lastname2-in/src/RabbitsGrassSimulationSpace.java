@@ -14,6 +14,7 @@ public class RabbitsGrassSimulationSpace {
 		grassGrid = new Object2DTorus(xSize, ySize);
 		agentGrid = new Object2DTorus(xSize, ySize);
 
+		// place "integer(0)" everywhere
 		for (int i = 0; i < xSize; i++) {
 			for (int j = 0; j < ySize; j++) {
 				grassGrid.putObjectAt(i, j, new Integer(0));
@@ -40,12 +41,16 @@ public class RabbitsGrassSimulationSpace {
 			// Get the value of the object at those coordinates
 			int currentValue = getGrassAt(x, y);
 
-			// Replace the Integer object with another one with the new value
-			grassGrid.putObjectAt(x, y, new Integer(currentValue + 1));
+			// limit the grass count on one spot to 16 (0-15)
+			if (currentValue >= 15) {
+				// Replace the Integer object with another one with the new value
+				grassGrid.putObjectAt(x, y, new Integer(currentValue + 1);
+			}		
 
 		}
 	}
 
+	// function that returns the number of grass at a defined position
 	public int getGrassAt(int x, int y) {
 		if (grassGrid.getObjectAt(x, y) != null) {
 			return ((Integer) grassGrid.getObjectAt(x, y)).intValue();
@@ -54,6 +59,7 @@ public class RabbitsGrassSimulationSpace {
 		}
 	}
 
+	// function for eating grass, meaning replacing the integer value by 0
 	public int eatGrassAt(int x, int y) {
 		int grass = getGrassAt(x, y);
 		grassGrid.putObjectAt(x, y, new Integer(0));
@@ -74,6 +80,7 @@ public class RabbitsGrassSimulationSpace {
 		return agentGrid.getObjectAt(x, y) != null;
 	}
 
+	// 10 is the number of times tried to add an agent, it return false if all the grid is occupied
 	public boolean addAgent(RabbitsGrassSimulationAgent agent) {
 		int countLimit = 10 * agentGrid.getSizeX() * agentGrid.getSizeY();
 
