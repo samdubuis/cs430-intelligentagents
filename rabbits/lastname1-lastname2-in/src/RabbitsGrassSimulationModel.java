@@ -38,6 +38,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	private DisplaySurface displaySurface;
 	private OpenSequenceGraph graphPopulation;
 	private ArrayList<RabbitsGrassSimulationAgent> agentList;
+	private long avgAgents;
+	private long avgGrass;
 
 	private int gridSize = GRIDSIZE;
 	private int numInitRabbits;
@@ -67,6 +69,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		rgSpace = null;
 		agentList = new ArrayList<>();
 		schedule = new Schedule();
+		avgAgents = 0;
+		avgGrass = 0;
 
 		// Tear down displays
 		if (displaySurface != null) {
@@ -86,6 +90,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		// Register displays
 		registerDisplaySurface("Rabbit Grass Simulation Model Window 1", displaySurface);
 		registerMediaProducer("Population plot", graphPopulation);
+
+		System.out.println("Finished setup");
 	}
 
 	public void begin() {
@@ -136,12 +142,34 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 			}
 		});
 
+		// schedule for averaging grass & agent count
+		schedule.scheduleActionBeginning(0, new BasicAction() {
+			@Override
+			public void execute() {
+				// count living rabbits & grass
+				avgAgents += countLivingAgents();
+				avgGrass += rgSpace.countGrass();
+			}
+		});
+
 		// schedule for counting and displaying number of rabbits alive, & plotting graph
 		schedule.scheduleActionAtInterval(10, new BasicAction() {
 			@Override
 			public void execute() {
 				countLivingAgents();
 				graphPopulation.step();
+			}
+		});
+
+		// schedule for stopping simulation
+		schedule.scheduleActionAt(3000, new BasicAction() {
+			@Override
+			public void execute() {
+				RabbitsGrassSimulationModel.super.stop();
+				double rabbits = avgAgents / schedule.getCurrentTime();
+				double grass = avgGrass / schedule.getCurrentTime();
+				System.out.println("Average agent count: " + rabbits);
+				System.out.println("Average grass count: " + grass);
 			}
 		});
 	}
