@@ -157,10 +157,8 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		newX = (newX + grid.getSizeX()) % grid.getSizeX();
 		newY = (newY + grid.getSizeY()) % grid.getSizeY();
 
-		if (tryMove(newX, newY)) {
-			// TODO: should rabbit also eat grass if it didn't manage to move?
-			energy += rgSpace.eatGrassAt(x, y);
-		}
+		tryMove(newX, newY);
+		energy += rgSpace.eatGrassAt(x, y);
 		// no need to reset direction after collision, direction is reset at every tick
 
 		energy--;

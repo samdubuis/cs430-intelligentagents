@@ -202,8 +202,9 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 
 	private void addNewAgent() {
 		RabbitsGrassSimulationAgent a = new RabbitsGrassSimulationAgent(rabbitLifespan);
-		agentList.add(a);
-		rgSpace.addAgent(a);
+		if(rgSpace.addAgent(a)) {
+			agentList.add(a);
+		}
 	}
 
 	private int countLivingAgents() {
