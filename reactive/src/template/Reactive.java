@@ -21,7 +21,7 @@ public class Reactive implements ReactiveBehavior {
 	private int numActions;
 	private Agent myAgent;
 
-	private <City, State> states;
+	private HashMap<City, State> states;
 	
 	private HashMap<State, Action> reward;
 	
@@ -40,7 +40,15 @@ public class Reactive implements ReactiveBehavior {
 		this.myAgent = agent;
 		
 		
-		// 
+		int costPerKm = agent.vehicles().get(0).costPerKm();
+		states = new HashMap<Topology.City, State>();
+		
+		for (City each : topology.cities()) {
+			for (City to : topology.cities()) {
+				State state = new State(each, to, costPerKm, td);
+				states.put(each, state);
+			}
+		}
 		
 		
 		
