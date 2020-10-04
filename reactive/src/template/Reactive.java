@@ -21,7 +21,9 @@ public class Reactive implements ReactiveBehavior {
 	private int numActions;
 	private Agent myAgent;
 
-	private HashMap<City, City> states;
+	private <City, State> states;
+	
+	private HashMap<State, Action> reward;
 	
 	
 	@Override
@@ -36,6 +38,12 @@ public class Reactive implements ReactiveBehavior {
 		this.pPickup = discount;
 		this.numActions = 0;
 		this.myAgent = agent;
+		
+		
+		// 
+		
+		
+		
 	}
 
 	@Override
@@ -44,24 +52,24 @@ public class Reactive implements ReactiveBehavior {
 		
 		City currentLoc = vehicle.getCurrentCity();
 		if (availableTask == null) {
-			City newDst = states.get(currentLoc).bestDst;
-			action = new Move(newDst);
+			// no task to take
+			action = new Move(states.get(currentLoc).get(null).bestDst);
+		} else {
+			bestDst = states.get(currentLoc).get(availableTask.deliveryCity).bestDst;
+			if (bestDst.name == availableTask.deliveryCity.name) {
+				// taking the task
+				action = new Pickup(availableTask);
+			} else {
+				// not taking the task
+				action = new Move(bestDst);
+			}
 		}
 		
 		
-		
-		
-//		if (availableTask == null || random.nextDouble() > pPickup) {
-//			City currentCity = vehicle.getCurrentCity();
-//			action = new Move(currentCity.randomNeighbor(random));
-//		} else {
-//			action = new Pickup(availableTask);
-//		}
-//
-//		if (numActions >= 1) {
-//			System.out.println("The total profit after " + numActions + " actions is " + myAgent.getTotalProfit() + " (average profit: " + (myAgent.getTotalProfit() / (double) numActions) + ")");
-//		}
-//		numActions++;
+		if (numActions >= 1) {
+			System.out.println("The total profit after " + numActions + " actions is " + myAgent.getTotalProfit() + " (average profit: " + (myAgent.getTotalProfit() / (double) numActions) + ")");
+		}
+		numActions++;
 
 		return action;
 	}
