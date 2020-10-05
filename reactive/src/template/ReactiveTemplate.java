@@ -10,6 +10,7 @@ import logist.task.Task;
 import logist.task.TaskDistribution;
 import logist.topology.Topology;
 import logist.topology.Topology.City;
+import utils.CsvWriter;
 
 import java.util.Random;
 
@@ -19,6 +20,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 	private double pPickup;
 	private int numActions;
 	private Agent myAgent;
+	private CsvWriter csvWriter;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
@@ -32,6 +34,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		this.pPickup = discount;
 		this.numActions = 0;
 		this.myAgent = agent;
+		this.csvWriter = new CsvWriter("reactive-random.csv");
 	}
 
 	@Override
@@ -47,6 +50,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 
 		if (numActions >= 1) {
 			System.out.println("The total profit after " + numActions + " actions is " + myAgent.getTotalProfit() + " (average profit: " + (myAgent.getTotalProfit() / (double) numActions) + ")");
+			csvWriter.add(numActions, myAgent.getTotalProfit(), myAgent.getTotalProfit() / myAgent.getTotalDistance());
 		}
 		numActions++;
 

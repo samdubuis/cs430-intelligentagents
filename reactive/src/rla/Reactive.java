@@ -10,6 +10,7 @@ import logist.task.Task;
 import logist.task.TaskDistribution;
 import logist.topology.Topology;
 import logist.topology.Topology.City;
+import utils.CsvWriter;
 
 import java.util.HashMap;
 
@@ -18,6 +19,7 @@ public class Reactive implements ReactiveBehavior {
 	private int numActions;
 	private Agent myAgent;
 	private HashMap<State, Response> policy;
+	private CsvWriter csvWriter;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
@@ -28,6 +30,7 @@ public class Reactive implements ReactiveBehavior {
 
 		this.numActions = 0;
 		this.myAgent = agent;
+		this.csvWriter = new CsvWriter("reactive-rla.csv");
 
 		// Get cost per km, knowing a reactive agent only uses the first vehicle of a company
 		int costPerKm = agent.vehicles().get(0).costPerKm();
@@ -67,6 +70,7 @@ public class Reactive implements ReactiveBehavior {
 
 		if (numActions >= 1) {
 			System.out.println("The total profit after " + numActions + " actions is " + myAgent.getTotalProfit() + " (average profit: " + (myAgent.getTotalProfit() / (double) numActions) + ")");
+			csvWriter.add(numActions, myAgent.getTotalProfit(), myAgent.getTotalProfit() / myAgent.getTotalDistance());
 		}
 		numActions++;
 
