@@ -39,6 +39,10 @@
         <set class-name="rla.Reactive"/>
         <set discount-factor=".99"></set>
     </agent>
-    
+
+    <agent name="reactive-greedy">
+        <set class-path="bin/"/>
+        <set class-name="greedy.ReactiveGreedy"/>
+    </agent>
 
 </agents>
