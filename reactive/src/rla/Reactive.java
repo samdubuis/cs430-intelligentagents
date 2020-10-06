@@ -20,13 +20,14 @@ public class Reactive implements ReactiveBehavior {
 	private Agent myAgent;
 	private HashMap<State, Response> policy;
 	private CsvWriter csvWriter;
+	public Double discount;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
 
 		// Reads the discount factor from the agents.xml file.
 		// If the property is not present it defaults to 0.95
-		Double discount = agent.readProperty("discount-factor", Double.class, 0.95);
+		 discount = agent.readProperty("discount-factor", Double.class, 0.95);
 
 		this.numActions = 0;
 		this.myAgent = agent;
@@ -69,7 +70,7 @@ public class Reactive implements ReactiveBehavior {
 		}
 
 		if (numActions >= 1) {
-			System.out.println("The total profit after " + numActions + " actions is " + myAgent.getTotalProfit() + " (average profit: " + (myAgent.getTotalProfit() / (double) numActions) + ")");
+			System.out.println(vehicle.name()+"-"+discount+" The total profit after " + numActions + " actions is " + myAgent.getTotalProfit() + " (average profit: " + (myAgent.getTotalProfit() / (double) numActions) + ")");
 			csvWriter.add(numActions, myAgent.getTotalProfit(), myAgent.getTotalProfit() / myAgent.getTotalDistance());
 		}
 		numActions++;

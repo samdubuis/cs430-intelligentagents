@@ -20,8 +20,8 @@ public class Learning {
 		this.costPerKm = costPerKm;
 		this.discount = discount;
 
-		this.states = new HashSet<>();
-		this.actions = new HashSet<>();
+		this.states = new HashSet<State>();
+		this.actions = new HashSet<Response>();
 	}
 
 	public void addState(State state) {
@@ -36,12 +36,12 @@ public class Learning {
 		final double MAX_DIFF = 1e-6;
 		double diff = Double.POSITIVE_INFINITY;
 
-		HashMap<State, Double> values = new HashMap<>(); // vector V in the lecture
-		HashMap<State, Response> policy = new HashMap<>(); // policy Pi in the lecture
+		HashMap<State, Double> values = new HashMap<State, Double>(); // vector V in the lecture
+		HashMap<State, Response> policy = new HashMap<State, Response>(); // policy Pi in the lecture
 
 		// while not good enough
 		while (diff > MAX_DIFF) {
-			HashMap<State, Double> new_values = new HashMap<>();
+			HashMap<State, Double> new_values = new HashMap<State, Double>();
 
 			// loop over states
 			for (State s : states) {
