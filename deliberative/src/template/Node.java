@@ -1,6 +1,9 @@
 package template;
 
 import logist.plan.Action;
+import logist.simulation.Vehicle;
+import java.util.*;
+
 
 public class Node {
 	private Node parentNode;
@@ -14,4 +17,22 @@ public class Node {
 		
 		
 	}
+
+	public Node getParentNode() {
+		return parentNode;
+	}
+
+	public Action getPreviousAction() {
+		return previousAction;
+	}
+
+	public State getState() {
+		return state;
+	}
+	
+	public List<Node> getSuccessors(Vehicle vehicle){
+		// TODO 
+		return null;
+	}
+	
 }

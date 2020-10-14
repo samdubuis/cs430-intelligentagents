@@ -11,6 +11,7 @@ import logist.task.TaskSet;
 import logist.topology.Topology;
 import logist.topology.Topology.City;
 
+import java.util.*;
 /**
  * An optimal planner for one vehicle.
  */
@@ -18,34 +19,34 @@ import logist.topology.Topology.City;
 public class DeliberativeAgent implements DeliberativeBehavior {
 
 	enum Algorithm { BFS, ASTAR }
-	
+
 	/* Environment */
 	Topology topology;
 	TaskDistribution td;
-	
+
 	/* the properties of the agent */
 	Agent agent;
 	int capacity;
 
 	/* the planning class */
 	Algorithm algorithm;
-	
+
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
 		this.topology = topology;
 		this.td = td;
 		this.agent = agent;
-		
+
 		// initialize the planner
 		int capacity = agent.vehicles().get(0).capacity();
 		String algorithmName = agent.readProperty("algorithm", String.class, "ASTAR");
-		
+
 		// Throws IllegalArgumentException if algorithm is unknown
 		algorithm = Algorithm.valueOf(algorithmName.toUpperCase());
-		
+
 		// ...
 	}
-	
+
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 		Plan plan;
@@ -65,10 +66,10 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 		}		
 		return plan;
 	}
-	
+
 	private Plan deliberativePlan(Vehicle vehicle, TaskSet tasks) {
 		// TODO
-		
+
 		City current = vehicle.getCurrentCity();
 		Plan plan = new Plan(current);
 
@@ -90,7 +91,7 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 		}
 		return plan;
 	}
-	
+
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
 		City current = vehicle.getCurrentCity();
 		Plan plan = new Plan(current);
@@ -116,11 +117,77 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 
 	@Override
 	public void planCancelled(TaskSet carriedTasks) {
-		
+
 		if (!carriedTasks.isEmpty()) {
 			// This cannot happen for this simple agent, but typically
 			// you will need to consider the carriedTasks when the next
 			// plan is computed.
 		}
 	}
+
+
+	private Node BFS(Vehicle vehicle, TaskSet tasks) {
+		City currentLoc = vehicle.getCurrentCity();
+		Plan plan = new Plan(currentLoc);
+
+		State firstState = new State(currentLoc, tasks, vehicle.getCurrentTasks());
+
+		List<Node> Q = new LinkedList<Node>();
+		Q.add(new Node(null, null, firstState));
+
+		Set<State> C = new HashSet<State>();
+
+		while(!Q.isEmpty()) {
+			Node n = Q.get(0);  // first element of Q
+			Q.remove(0); 		// rest(Q)
+
+			if (n.getState().isFinalState()) { 
+				// return n if final node 
+				return n; 		
+			}
+			
+			else if (!C.contains(n.getState())) {
+				// if n not member of C
+				// add n to C
+				// append successors of n to Q
+				
+				C.add(n.getState());
+				Q.addAll(n.getSuccessors(vehicle));
+
+			}
+		}
+
+		// if Q is empty return failure
+		System.out.println("Failed");
+		return null;
+
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

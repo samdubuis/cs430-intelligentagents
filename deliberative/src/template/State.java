@@ -15,6 +15,10 @@ public class State {
 		this.pickedupTasks = pickedupTasks;
 	}
 	
+	public boolean isFinalState() {
+		return availableTasks.isEmpty() && pickedupTasks.isEmpty();
+	}
+	
 	
 	
 }
