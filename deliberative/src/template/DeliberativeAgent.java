@@ -4,6 +4,7 @@ package template;
 import logist.simulation.Vehicle;
 import logist.agent.Agent;
 import logist.behavior.DeliberativeBehavior;
+import logist.plan.Action;
 import logist.plan.Plan;
 import logist.task.Task;
 import logist.task.TaskDistribution;
@@ -50,48 +51,48 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 		Plan plan;
-
+		Node lastNode = null;
+		
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
 		case ASTAR:
-			// ...
-			plan = naivePlan(vehicle, tasks);
+			// 
+			lastNode = BFS(vehicle, tasks);
+//			plan = naivePlan(vehicle, tasks);
 			break;
 		case BFS:
-			// ...
-			plan = naivePlan(vehicle, tasks);
+			lastNode = ASTAR(vehicle, tasks);
+//			plan = naivePlan(vehicle, tasks);
 			break;
 		default:
 			throw new AssertionError("Should not happen.");
 		}		
-		return plan;
+		return deliberativePlan(lastNode, vehicle);
 	}
 
-	private Plan deliberativePlan(Vehicle vehicle, TaskSet tasks) {
-		// TODO
-
-		City current = vehicle.getCurrentCity();
-		Plan plan = new Plan(current);
-
-		for (Task task : tasks) {
-			// move: current city => pickup location
-			for (City city : current.pathTo(task.pickupCity))
-				plan.appendMove(city);
-
-			plan.appendPickup(task);
-
-			// move: pickup location => delivery location
-			for (City city : task.path())
-				plan.appendMove(city);
-
-			plan.appendDelivery(task);
-
-			// set current city
-			current = task.deliveryCity;
+	
+	private Plan deliberativePlan(Node lastNode, Vehicle vehicle) {
+		// TODO a checker
+		Plan plan = new Plan(vehicle.getCurrentCity());
+		Node node = lastNode;
+		
+		LinkedList<Action> backwardAction = new LinkedList<Action>();
+		
+		while (node.getPreviousAction()!=null) {
+			backwardAction.add(node.getPreviousAction());
+			node = node.getParentNode();
 		}
+		
+		Iterator<Action> it = backwardAction.descendingIterator();
+		
+		while (it.hasNext()) {
+			plan.append(it.next());			
+		}
+		
 		return plan;
 	}
 
+	
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
 		City current = vehicle.getCurrentCity();
 		Plan plan = new Plan(current);
@@ -132,7 +133,7 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 
 		State firstState = new State(currentLoc, tasks, vehicle.getCurrentTasks());
 
-		List<Node> Q = new LinkedList<Node>();
+		List<Node> Q = new ArrayList<Node>();
 		Q.add(new Node(null, null, firstState));
 
 		Set<State> C = new HashSet<State>();
@@ -160,8 +161,12 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 		// if Q is empty return failure
 		System.out.println("Failed");
 		return null;
-
 	}
+	
+	public Node ASTAR(Vehicle vehicle, TaskSet tasks) {
+		// TODO
+	}
+	
 }
 
 
