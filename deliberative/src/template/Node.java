@@ -32,7 +32,16 @@ public class Node {
 	
 	public List<Node> getSuccessors(Vehicle vehicle){
 		// TODO 
-		return null;
+		
+		LinkedList<Node> successors = new LinkedList<Node>();
+		
+		// Deliver
+		
+		// Pickup
+		
+		// Move
+		
+		return successors;
 	}
 	
 	

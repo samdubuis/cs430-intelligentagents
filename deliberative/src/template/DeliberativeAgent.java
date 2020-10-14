@@ -48,6 +48,7 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 		// ...
 	}
 
+	
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 		Plan plan;
@@ -71,6 +72,10 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 	}
 
 	
+/*
+ * deliberative Plan function to compute the plan based on the last node and going backward 
+ * see descendingIterator and backwardAction
+ */
 	private Plan deliberativePlan(Node lastNode, Vehicle vehicle) {
 		// TODO a checker
 		Plan plan = new Plan(vehicle.getCurrentCity());
