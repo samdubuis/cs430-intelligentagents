@@ -18,6 +18,18 @@ public class State {
 	public boolean isFinalState() {
 		return availableTasks.isEmpty() && pickedupTasks.isEmpty();
 	}
+
+	public City getLoc() {
+		return loc;
+	}
+
+	public TaskSet getAvailableTasks() {
+		return availableTasks;
+	}
+
+	public TaskSet getPickedupTasks() {
+		return pickedupTasks;
+	}
 	
 	
 	

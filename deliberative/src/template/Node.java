@@ -1,7 +1,12 @@
 package template;
 
 import logist.plan.Action;
+import logist.plan.Action.Move;
 import logist.simulation.Vehicle;
+import logist.task.Task;
+import logist.task.TaskSet;
+import logist.topology.Topology.City;
+
 import java.util.*;
 
 
@@ -9,15 +14,32 @@ public class Node {
 	private Node parentNode;
 	private Action previousAction;
 	private State state;
-	
-	public Node(Node parent, Action previousAction, State state) {
+	private double cost;
+
+	public Node(Node parent, Action previousAction, State state, double cost) {
 		this.parentNode = parent;
 		this.previousAction = previousAction;
 		this.state = state;
-		
-		
+		this.cost = cost;
+
+	}
+	
+	public Node(Node parent, Action previousAction, State state) {
+		this(parent, previousAction, state, 0);
+	}
+	
+	public double h() {
+		// heuristic function 
+		// ? available task reward * available weight   +   pickedup tasks reward * pickedup weight ?
+		// a jouer sur le reward je pense
+		return 0;
 	}
 
+	public double f() {
+		// as in the slide
+		return h()+cost;
+	}
+	
 	public Node getParentNode() {
 		return parentNode;
 	}
@@ -29,20 +51,47 @@ public class Node {
 	public State getState() {
 		return state;
 	}
-	
+
 	public List<Node> getSuccessors(Vehicle vehicle){
-		// TODO 
-		
+		// TODO A checker
+
 		LinkedList<Node> successors = new LinkedList<Node>();
-		
+
 		// Deliver
-		
+		for (Task task : state.getPickedupTasks()) {
+			if (task.deliveryCity.equals(state.getLoc())) {
+				TaskSet nextToPickupTasks = state.getPickedupTasks().clone();
+				nextToPickupTasks.remove(task);
+
+				State nextState = new State(state.getLoc(), state.getAvailableTasks(), nextToPickupTasks);
+				successors.add(new Node(this, new Action.Delivery(task), nextState));
+			}
+		}
+
+
 		// Pickup
+		for (Task task : state.getAvailableTasks()) {
+			if (task.pickupCity.equals(state.getLoc()) && (task.weight + state.getPickedupTasks().weightSum() <= vehicle.capacity())) {
+				TaskSet nextAvailableTask = state.getAvailableTasks().clone();
+				nextAvailableTask.remove(task);
+				
+				TaskSet nextToPickupTasks = state.getPickedupTasks().clone();
+				nextToPickupTasks.add(task);
+				
+				State nextState = new State(state.getLoc(), nextAvailableTask, nextToPickupTasks);
+				successors.add(new Node(this, new Action.Pickup(task), nextState));
+			}
+		}
+		
 		
 		// Move
+		for (City neighbour : state.getLoc().neighbors()) {
+			State nextState = new State(neighbour, state.getAvailableTasks(), state.getPickedupTasks());
+			double movementCost = vehicle.costPerKm()*state.getLoc().distanceTo(neighbour);
+			successors.add(new Node(this, new Action.Move(neighbour), nextState, cost+movementCost));
+		}
 		
 		return successors;
 	}
-	
-	
+
 }
