@@ -52,6 +52,10 @@ public class Node {
 		return state;
 	}
 
+	public double getCost() {
+		return cost;
+	}
+
 	public List<Node> getSuccessors(Vehicle vehicle) {
 		// TODO A checker --> OK pour moi, tres propre, juste lignes 67 et 82 j'ai rajouté le cout des nodes (qui reste le meme)
 
