@@ -1,25 +1,26 @@
 package template;
 
 /* import table */
-import logist.simulation.Vehicle;
+
 import logist.agent.Agent;
 import logist.behavior.DeliberativeBehavior;
 import logist.plan.Action;
 import logist.plan.Plan;
-import logist.task.Task;
+import logist.simulation.Vehicle;
 import logist.task.TaskDistribution;
 import logist.task.TaskSet;
 import logist.topology.Topology;
-import logist.topology.Topology.City;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.LinkedList;
+
 /**
  * An optimal planner for one vehicle.
  */
 @SuppressWarnings("unused")
 public class DeliberativeAgent implements DeliberativeBehavior {
 
-	enum Algorithm { BFS, ASTAR }
+	enum Algorithm {BFS, ASTAR}
 
 	/* Environment */
 	Topology topology;
@@ -39,7 +40,7 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 		this.agent = agent;
 
 		// initialize the planner
-		int capacity = agent.vehicles().get(0).capacity();
+		capacity = agent.vehicles().get(0).capacity();
 		String algorithmName = agent.readProperty("algorithm", String.class, "ASTAR");
 
 		// Throws IllegalArgumentException if algorithm is unknown
@@ -48,76 +49,48 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 		// ...
 	}
 
-	
+
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 		Plan plan;
 		Node lastNode = null;
-		
+
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
 		case ASTAR:
-			// 
-			lastNode = BFS(vehicle, tasks);
-//			plan = naivePlan(vehicle, tasks);
+			lastNode = Algorithms.BFS(vehicle, tasks);
 			break;
 		case BFS:
-			lastNode = ASTAR(vehicle, tasks);
-//			plan = naivePlan(vehicle, tasks);
+			lastNode = Algorithms.ASTAR(vehicle, tasks);
 			break;
 		default:
 			throw new AssertionError("Should not happen.");
-		}		
+		}
 		return deliberativePlan(lastNode, vehicle);
 	}
 
-	
-/*
- * deliberative Plan function to compute the plan based on the last node and going backward 
- * see descendingIterator and backwardAction
- */
+
+	/*
+	 * deliberativePlan function to compute the plan based on the last node and by going backward
+	 * see descendingIterator and backwardAction
+	 */
 	private Plan deliberativePlan(Node lastNode, Vehicle vehicle) {
-		// TODO a checker
 		Plan plan = new Plan(vehicle.getCurrentCity());
 		Node node = lastNode;
-		
+
 		LinkedList<Action> backwardAction = new LinkedList<Action>();
-		
-		while (node.getPreviousAction()!=null) {
+
+		while (node.getPreviousAction() != null) {
 			backwardAction.add(node.getPreviousAction());
 			node = node.getParentNode();
 		}
-		
+
 		Iterator<Action> it = backwardAction.descendingIterator();
-		
+
 		while (it.hasNext()) {
-			plan.append(it.next());			
+			plan.append(it.next());
 		}
-		
-		return plan;
-	}
 
-	
-	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
-		City current = vehicle.getCurrentCity();
-		Plan plan = new Plan(current);
-
-		for (Task task : tasks) {
-			// move: current city => pickup location
-			for (City city : current.pathTo(task.pickupCity))
-				plan.appendMove(city);
-
-			plan.appendPickup(task);
-
-			// move: pickup location => delivery location
-			for (City city : task.path())
-				plan.appendMove(city);
-
-			plan.appendDelivery(task);
-
-			// set current city
-			current = task.deliveryCity;
-		}
 		return plan;
 	}
 
@@ -130,83 +103,6 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 			// plan is computed.
 		}
 	}
-
-
-	private Node BFS(Vehicle vehicle, TaskSet tasks) {
-		City currentLoc = vehicle.getCurrentCity();
-		Plan plan = new Plan(currentLoc);
-
-		State firstState = new State(currentLoc, tasks, vehicle.getCurrentTasks());
-
-		List<Node> Q = new ArrayList<Node>();
-		Q.add(new Node(null, null, firstState));
-
-		Set<State> C = new HashSet<State>();
-
-		while(!Q.isEmpty()) {
-			Node n = Q.get(0);  // first element of Q
-			Q.remove(0); 		// rest(Q)
-
-			if (n.getState().isFinalState()) { 
-				// return n if final node 
-				return n; 		
-			}
-			
-			else if (!C.contains(n.getState())) {
-				// if n not member of C
-				// add n to C
-				// append successors of n to Q
-				
-				C.add(n.getState());
-				Q.addAll(n.getSuccessors(vehicle));
-
-			}
-		}
-
-		// if Q is empty return failure
-		System.out.println("Failed");
-		return null;
-	}
-	
-	public Node ASTAR(Vehicle vehicle, TaskSet tasks) {
-		// TODO a checker
-		City currentLoc = vehicle.getCurrentCity();
-		Plan plan = new Plan(currentLoc);
-		
-		State firstState = new State(currentLoc, tasks, vehicle.getCurrentTasks());
-
-		List<Node> Q = new ArrayList<Node>();
-		Q.add(new Node(null, null, firstState));
-		
-		Map<State, Double> C = new HashMap<State, Double>();
-		
-		while (!Q.isEmpty()) {
-			Node n = Q.get(0);
-			Q.remove(0);
-			
-			if (n.getState().isFinalState()) {
-				return n;
-			}
-			
-			if (!C.containsKey(n.getState()) || C.get(n.getState()) > n.f() ) {
-				// if n not member of C or has lower cost than its own copy in C
-				// add n to C
-				// append successors of n to Q
-				
-				C.put(n.getState(), n.f());
-				List<Node> S = n.getSuccessors(vehicle);
-				
-				S.sort((node1, node2) -> Double.compare(node1.f(), node2.f())); // successors of n are sorted 
-				Q.addAll(S);													// merged with Q list
-				Q.sort((node1, node2) -> Double.compare(node1.f(), node2.f())); // Q list is also sorted for better use
-			}
-		}
-		
-		// if Q is empty return failure
-		System.out.println("Failed");
-		return null;
-	}
-	
 }
 
 
