@@ -13,7 +13,7 @@ public class Algorithms {
 		State firstState = new State(currentLoc, tasks, vehicle.getCurrentTasks());
 
 		Queue<Node> Q = new LinkedList<Node>();
-		Q.add(new Node(null, null, firstState));
+		Q.add(new Node(null, null, firstState, vehicle));
 
 		Map<State, Double> C = new HashMap<State, Double>();
 
@@ -33,7 +33,7 @@ public class Algorithms {
 				// append successors of n to Q
 
 				C.put(s, n.getCost());
-				Q.addAll(n.getSuccessors(vehicle)); // TODO : better adding in case this state was already explored, and only cost changed ???
+				Q.addAll(n.getSuccessors()); // TODO : better adding in case this state was already explored, and only cost changed ???
 			}
 		}
 
@@ -46,7 +46,7 @@ public class Algorithms {
 		State firstState = new State(currentLoc, tasks, vehicle.getCurrentTasks());
 
 		Queue<Node> Q = new PriorityQueue<>(Comparator.comparingDouble(Node::f));
-		Q.add(new Node(null, null, firstState));
+		Q.add(new Node(null, null, firstState, vehicle));
 
 		Map<State, Double> C = new HashMap<State, Double>();
 
@@ -63,7 +63,7 @@ public class Algorithms {
 				// append successors of n to Q
 
 				C.put(s, n.f());
-				Q.addAll(n.getSuccessors(vehicle)); // successor states are merged into priority queue
+				Q.addAll(n.getSuccessors()); // successor states are merged into priority queue
 			}
 		}
 

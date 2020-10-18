@@ -15,24 +15,41 @@ public class Node {
 	private final Action previousAction;
 	private final State state;
 	private final double cost;
+	private final Vehicle vehicle;
 
-	public Node(Node parent, Action previousAction, State state, double cost) {
+	public Node(Node parent, Action previousAction, State state, double cost, Vehicle vehicle) {
 		this.parentNode = parent;
 		this.previousAction = previousAction;
 		this.state = state;
 		this.cost = cost;
-
+		this.vehicle = vehicle;
 	}
 
-	public Node(Node parent, Action previousAction, State state) {
-		this(parent, previousAction, state, 0);
+	public Node(Node parent, Action previousAction, State state, Vehicle vehicle) {
+		this(parent, previousAction, state, 0, vehicle);
 	}
 
 	public double h() {
-		// heuristic function 
+		// TODO: heuristic function
 		// ? available task reward * available weight   +   pickedup tasks reward * pickedup weight ?
 		// a jouer sur le reward je pense
-		return 0;
+
+		// Idea: heuristic future cost = at least as much as cost for (pickup + deliver) the most expensive available task
+		State s = getState();
+		double maxCost = 0;
+		for (Task t : s.getAvailableTasks()) {
+			double distance = s.getLoc().distanceTo(t.pickupCity) + t.pathLength();
+			double cost = distance * vehicle.costPerKm();
+			if (cost > maxCost)
+				maxCost = cost;
+		}
+		for (Task t : s.getPickedupTasks()) {
+			double cost = vehicle.costPerKm() * s.getLoc().distanceTo(t.deliveryCity);
+			if (cost > maxCost)
+				maxCost = cost;
+		}
+
+		return maxCost;
 	}
 
 	public double f() {
@@ -56,7 +73,7 @@ public class Node {
 		return cost;
 	}
 
-	public List<Node> getSuccessors(Vehicle vehicle) {
+	public List<Node> getSuccessors() {
 		// TODO A checker --> OK pour moi, tres propre, juste lignes 67 et 82 j'ai rajouté le cout des nodes (qui reste le meme)
 
 		LinkedList<Node> successors = new LinkedList<Node>();
@@ -68,7 +85,7 @@ public class Node {
 				nextToPickupTasks.remove(task);
 
 				State nextState = new State(state.getLoc(), state.getAvailableTasks(), nextToPickupTasks);
-				successors.add(new Node(this, new Action.Delivery(task), nextState, cost));
+				successors.add(new Node(this, new Action.Delivery(task), nextState, cost, vehicle));
 			}
 		}
 
@@ -83,7 +100,7 @@ public class Node {
 				nextToPickupTasks.add(task);
 
 				State nextState = new State(state.getLoc(), nextAvailableTask, nextToPickupTasks);
-				successors.add(new Node(this, new Action.Pickup(task), nextState, cost));
+				successors.add(new Node(this, new Action.Pickup(task), nextState, cost, vehicle));
 			}
 		}
 
@@ -92,7 +109,7 @@ public class Node {
 		for (City neighbour : state.getLoc().neighbors()) {
 			State nextState = new State(neighbour, state.getAvailableTasks(), state.getPickedupTasks());
 			double movementCost = vehicle.costPerKm() * state.getLoc().distanceTo(neighbour);
-			successors.add(new Node(this, new Action.Move(neighbour), nextState, cost + movementCost));
+			successors.add(new Node(this, new Action.Move(neighbour), nextState, cost + movementCost, vehicle));
 		}
 
 		return successors;

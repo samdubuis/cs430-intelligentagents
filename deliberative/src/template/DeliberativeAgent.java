@@ -58,10 +58,10 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
 		case ASTAR:
-			lastNode = Algorithms.BFS(vehicle, tasks);
+			lastNode = Algorithms.ASTAR(vehicle, tasks);
 			break;
 		case BFS:
-			lastNode = Algorithms.ASTAR(vehicle, tasks);
+			lastNode = Algorithms.BFS(vehicle, tasks);
 			break;
 		default:
 			throw new AssertionError("Should not happen.");
