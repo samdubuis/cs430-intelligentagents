@@ -30,5 +30,23 @@ public class State {
 		return pickedupTasks;
 	}
 
-	// TODO: hashCode & equals
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		State state = (State) o;
+
+		if (!loc.equals(state.loc)) return false;
+		if (!availableTasks.equals(state.availableTasks)) return false;
+		return pickedupTasks.equals(state.pickedupTasks);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = loc.hashCode();
+		result = 31 * result + availableTasks.hashCode();
+		result = 31 * result + pickedupTasks.hashCode();
+		return result;
+	}
 }
