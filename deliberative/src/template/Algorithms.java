@@ -33,7 +33,7 @@ public class Algorithms {
 				// append successors of n to Q
 
 				C.put(s, n.getCost());
-				Q.addAll(n.getSuccessors()); // TODO : better adding in case this state was already explored, and only cost changed ???
+				Q.addAll(n.getSuccessors());
 			}
 		}
 

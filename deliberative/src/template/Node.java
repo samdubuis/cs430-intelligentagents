@@ -30,7 +30,7 @@ public class Node {
 	}
 
 	public double h() {
-		// Idea: heuristic future cost = at least as much as cost for (pickup + deliver) the most expensive available task
+		// Idea: heuristic future cost = at least as much as cost for (pickup / deliver) the most expensive available task
 		State s = getState();
 		double maxCost = 0;
 		for (Task t : s.getAvailableTasks()) {

@@ -46,8 +46,6 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 
 		// Throws IllegalArgumentException if algorithm is unknown
 		algorithm = Algorithm.valueOf(algorithmName.toUpperCase());
-
-		// ...
 	}
 
 
@@ -107,9 +105,9 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 	public void planCancelled(TaskSet carriedTasks) {
 
 		if (!carriedTasks.isEmpty()) {
-			// This cannot happen for this simple agent, but typically
-			// you will need to consider the carriedTasks when the next
-			// plan is computed.
+			// Carried tasks are already taken into account in the plan function
+			// (more precisely, in the initialization of the search algorithms)
+			// No special action needs to be taken here
 		}
 	}
 }
