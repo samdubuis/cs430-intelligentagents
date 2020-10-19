@@ -52,6 +52,9 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
+		long startTime = System.currentTimeMillis();
+		float elapsedTime = 0;
+		
 		Plan plan;
 		Node lastNode = null;
 
@@ -59,9 +62,13 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 		switch (algorithm) {
 		case ASTAR:
 			lastNode = Algorithms.ASTAR(vehicle, tasks);
+	        elapsedTime = (System.currentTimeMillis() - startTime) / 1000f;
+	        System.out.println("Plan time for ASTAR: " + elapsedTime + "s");
 			break;
 		case BFS:
 			lastNode = Algorithms.BFS(vehicle, tasks);
+	        elapsedTime = (System.currentTimeMillis() - startTime) / 1000f;
+	        System.out.println("Plan time for BFS: " + elapsedTime + "s");
 			break;
 		default:
 			throw new AssertionError("Should not happen.");
