@@ -30,10 +30,6 @@ public class Node {
 	}
 
 	public double h() {
-		// TODO: heuristic function
-		// ? available task reward * available weight   +   pickedup tasks reward * pickedup weight ?
-		// a jouer sur le reward je pense
-
 		// Idea: heuristic future cost = at least as much as cost for (pickup + deliver) the most expensive available task
 		State s = getState();
 		double maxCost = 0;
@@ -74,7 +70,6 @@ public class Node {
 	}
 
 	public List<Node> getSuccessors() {
-		// TODO A checker --> OK pour moi, tres propre, juste lignes 67 et 82 j'ai rajouté le cout des nodes (qui reste le meme)
 
 		LinkedList<Node> successors = new LinkedList<Node>();
 
