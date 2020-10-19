@@ -29,6 +29,7 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 	/* the properties of the agent */
 	Agent agent;
 	int capacity;
+	int numActions = 0;
 
 	/* the planning class */
 	Algorithm algorithm;
@@ -73,6 +74,7 @@ public class DeliberativeAgent implements DeliberativeBehavior {
 		default:
 			throw new AssertionError("Should not happen.");
 		}
+		
 		return deliberativePlan(lastNode, vehicle);
 	}
 

@@ -106,7 +106,7 @@ public class Node {
 			double movementCost = vehicle.costPerKm() * state.getLoc().distanceTo(neighbour);
 			successors.add(new Node(this, new Action.Move(neighbour), nextState, cost + movementCost, vehicle));
 		}
-
+		
 		return successors;
 	}
 
