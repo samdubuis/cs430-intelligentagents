@@ -33,6 +33,9 @@ public class CentralizedAgent implements CentralizedBehavior {
     private long timeout_setup;
     private long timeout_plan;
     
+    private List<Vehicle> vehicleInOrder;
+    
+    
     @Override
     public void setup(Topology topology, TaskDistribution distribution,
             Agent agent) {
@@ -60,14 +63,12 @@ public class CentralizedAgent implements CentralizedBehavior {
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
         long time_start = System.currentTimeMillis();
         
-//		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
-        Plan planVehicle1 = naivePlan(vehicles.get(0), tasks);
+        Variable action = firstSolution(tasks);
+        Variable bestVar = action;
 
-        List<Plan> plans = new ArrayList<Plan>();
-        plans.add(planVehicle1);
-        while (plans.size() < vehicles.size()) {
-            plans.add(Plan.EMPTY);
-        }
+        this.vehicleInOrder = vehicles;
+        
+        
         
         long time_end = System.currentTimeMillis();
         long duration = time_end - time_start;
@@ -75,29 +76,16 @@ public class CentralizedAgent implements CentralizedBehavior {
         
         return plans;
     }
-
-    private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
-        City current = vehicle.getCurrentCity();
-        Plan plan = new Plan(current);
-
-        for (Task task : tasks) {
-            // move: current city => pickup location
-            for (City city : current.pathTo(task.pickupCity)) {
-                plan.appendMove(city);
-            }
-
-            plan.appendPickup(task);
-
-            // move: pickup location => delivery location
-            for (City city : task.path()) {
-                plan.appendMove(city);
-            }
-
-            plan.appendDelivery(task);
-
-            // set current city
-            current = task.deliveryCity;
+    
+    public int cost() {
+        int cost = 0;
+        List<Plan> plans = computePlans(this);
+        for (int i = 0; i < plans.size(); i++) {
+            cost += plans.get(i).totalDistance() * orderedVehicles.get(i).costPerKm();
         }
-        return plan;
+        return cost;
     }
+
+    
 }
+	
