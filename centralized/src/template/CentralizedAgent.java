@@ -33,18 +33,13 @@ import logist.topology.Topology.City;
 public class CentralizedAgent implements CentralizedBehavior {
 
     private Random random = new Random(123);
-    
-    private static final int RESTART_NUMBER = 0;
-
-	private static final boolean RANDOM_INSERTIONS = false;
-
-	private static final int ROLLBACK_DEPTH = 0;
-
-	private static final int NO_IMPROVEMENT_THRESHOLD = 0;
-
-	private static final int CHANGE_VEHICLE_COUNT = 0;
-
-	private static final int CHANGE_ORDER_COUNT = 0;
+    private static final int RESTART_NUMBER = 5;
+	private static final boolean RANDOM_INSERTIONS = true;
+	private static final int ROLLBACK_DEPTH = 5;
+	private static final int NO_IMPROVEMENT_THRESHOLD = 1000;
+	private static final int CHANGE_VEHICLE_COUNT = 10;
+	private static final int CHANGE_ORDER_COUNT = 10;
+	
 	private Topology topology;
     private TaskDistribution distribution;
     private Agent agent;
@@ -92,14 +87,14 @@ public class CentralizedAgent implements CentralizedBehavior {
 
         for(int i = 0; i < RESTART_NUMBER; i++) {
             Variables result = restartIterations(aimedTime / RESTART_NUMBER, action);
-            System.out.println("New iteration result: " + result.cost());
-            if(result.cost() < bestVar.cost()) {
+            System.out.println("New iteration result: " + cost(result));
+            if(cost(result) < cost(bestVar)) {
                 bestVar = result;
             }
             action = firstSolution(tasks);
         }
 
-        System.out.println("final cost = " + bestVar.cost());
+        System.out.println("final cost = " + cost(bestVar));
         List<Plan> plans = computePlans(bestVar);
         
         
@@ -108,6 +103,15 @@ public class CentralizedAgent implements CentralizedBehavior {
         System.out.println("The plan was generated in " + duration + " milliseconds.");
         
         return plans;
+    }
+    
+    public int cost(Variables action) {
+        int cost = 0;
+        List<Plan> plans = computePlans(action);
+        for (int i = 0; i < plans.size(); i++) {
+            cost += plans.get(i).totalDistance() * vehicleInOrder.get(i).costPerKm();
+        }
+        return cost;
     }
     
     private Variables restartIterations(long allowedTime, Variables action) {
@@ -119,18 +123,18 @@ public class CentralizedAgent implements CentralizedBehavior {
         history.add(action);
         int noImprovementCount = 0;
 
-        int bestCost = action.cost();
+        int bestCost = cost(action);
         Variables bestVariables = action;
         int i = 0;
 
         while(elapsedTime < allowedTime) {
-            int previousCost = action.cost();
+            int previousCost = cost(action);
 
             List<Variables> neighbors = chooseNeighbors(action, CHANGE_VEHICLE_COUNT, CHANGE_ORDER_COUNT);
             neighbors.add(action);
             action = localChoice(neighbors, action);
 
-            int currentCost = action.cost();
+            int currentCost = cost(action);
             if (currentCost < bestCost) {
                 bestCost = currentCost;
                 bestVariables = action;
@@ -336,7 +340,7 @@ public class CentralizedAgent implements CentralizedBehavior {
         int bestCost = Integer.MAX_VALUE;
 
         for(Variables neighbor: neighbors) {
-            int cost = neighbor.cost();
+            int cost = cost(neighbor);
 
             if(cost == bestCost) {
                 bestNeighbors.add(neighbor);

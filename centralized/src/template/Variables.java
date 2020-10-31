@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import logist.plan.Plan;
 import logist.simulation.Vehicle;
 import logist.task.Task;
 
@@ -40,14 +39,7 @@ public class Variables {
 		this.vehicles = new HashMap<ActionV2, Vehicle>(A.vehicles);
 	}
 	
-	public int cost() {
-        int cost = 0;
-        List<Plan> plans = computePlans(this);
-        for (int i = 0; i < plans.size(); i++) {
-            cost += plans.get(i).totalDistance() * vehicleInOrder.get(i).costPerKm();
-        }
-        return cost;
-    }
+	
 
 
 	public boolean checkPossibleWeight(Vehicle v) {
