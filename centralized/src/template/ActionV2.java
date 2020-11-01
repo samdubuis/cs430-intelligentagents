@@ -15,4 +15,21 @@ public class ActionV2 {
 		return new ActionV2(!isPickup, task);
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		ActionV2 actionV2 = (ActionV2) o;
+
+		if (isPickup != actionV2.isPickup) return false;
+		return task.equals(actionV2.task);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = (isPickup ? 1 : 0);
+		result = 31 * result + task.hashCode();
+		return result;
+	}
 }

@@ -15,14 +15,11 @@ import logist.topology.Topology.City;
 import java.io.File;
 import java.util.*;
 
-/**
- * A very simple auction agent that assigns all tasks to its first vehicle and
- * handles them sequentially.
- */
+
 @SuppressWarnings("unused")
 public class CentralizedAgent implements CentralizedBehavior {
 
-	private Random random = new Random(123);
+	private final Random random = new Random(123);
 	private static final int RESTART_NUMBER = 5;
 	private static final boolean RANDOM_INSERTIONS = true;
 	private static final int ROLLBACK_DEPTH = 5;
@@ -33,16 +30,14 @@ public class CentralizedAgent implements CentralizedBehavior {
 	private Topology topology;
 	private TaskDistribution distribution;
 	private Agent agent;
-	private long timeout_setup;
-	private long timeout_plan;
+	private long timeout_setup = 1000; // 1s default value, in case we fail to load settings file
+	private long timeout_plan = 1000;
 
 	public List<Vehicle> vehicleInOrder;
 
 
 	@Override
-	public void setup(Topology topology, TaskDistribution distribution,
-					  Agent agent) {
-
+	public void setup(Topology topology, TaskDistribution distribution, Agent agent) {
 		// this code is used to get the timeouts
 		LogistSettings ls = null;
 		try {
@@ -51,10 +46,12 @@ public class CentralizedAgent implements CentralizedBehavior {
 			System.out.println("There was a problem loading the configuration file.");
 		}
 
-		// the setup method cannot last more than timeout_setup milliseconds
-		timeout_setup = ls.get(LogistSettings.TimeoutKey.SETUP);
-		// the plan method cannot execute more than timeout_plan milliseconds
-		timeout_plan = ls.get(LogistSettings.TimeoutKey.PLAN);
+		if(ls != null) {
+			// the setup method cannot last more than timeout_setup milliseconds
+			timeout_setup = ls.get(LogistSettings.TimeoutKey.SETUP);
+			// the plan method cannot execute more than timeout_plan milliseconds
+			timeout_plan = ls.get(LogistSettings.TimeoutKey.PLAN);
+		}
 
 		this.topology = topology;
 		this.distribution = distribution;
@@ -64,11 +61,15 @@ public class CentralizedAgent implements CentralizedBehavior {
 	@Override
 	public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
 		long time_start = System.currentTimeMillis();
+		this.vehicleInOrder = vehicles;
 
 		Variables action = firstSolution(tasks);
+		if(action == null) {
+			System.err.println("Impossible to plan for this task distribution");
+			return null;
+		}
 		Variables bestVar = action;
 
-		this.vehicleInOrder = vehicles;
 
 		long aimedTime = (long) ((timeout_plan - 300) * 0.9);
 		System.out.println("Estimated time (ms): " + aimedTime);
@@ -163,19 +164,26 @@ public class CentralizedAgent implements CentralizedBehavior {
 
 		for (Task task : tasks) {
 			List<Vehicle> potentialVehicles = vehiclesWithSufficientCapacity(vehicleInOrder, task.weight);
+			if(potentialVehicles.size() <= 0)
+				break;
 			Vehicle vehicle = potentialVehicles.get(random.nextInt(potentialVehicles.size()));
+
 			ActionV2 action = new ActionV2(true, task);
 			actions.get(vehicle).add(action);
 			int actionTime = actions.get(vehicle).size();
 			time.put(action, actionTime);
 			vehicles.put(action, vehicle);
+
 			action = new ActionV2(false, task);
 			actions.get(vehicle).add(action);
 			time.put(action, actionTime + 1);
 			vehicles.put(action, vehicle);
 		}
 
-		return new Variables(actions, vehicles, time);
+		Variables vars = new Variables(actions, vehicles, time, tasks);
+		if(!vars.checkConstraints(vehicleInOrder))
+			return null;
+		return vars;
 	}
 
 	private List<Vehicle> vehiclesWithSufficientCapacity(List<Vehicle> vehicles, int weight) {

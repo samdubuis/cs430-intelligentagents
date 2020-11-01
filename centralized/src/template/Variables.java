@@ -2,8 +2,10 @@ package template;
 
 //the list of imports
 
+import logist.plan.Action;
 import logist.simulation.Vehicle;
 import logist.task.Task;
+import logist.task.TaskSet;
 
 import java.util.*;
 
@@ -12,11 +14,13 @@ public class Variables {
 	public Map<Vehicle, List<ActionV2>> actions;
 	public Map<ActionV2, Vehicle> vehicles;
 	public Map<ActionV2, Integer> timing;
+	private final TaskSet allTasks;
 
-	public Variables(Map<Vehicle, List<ActionV2>> actions, Map<ActionV2, Vehicle> vehicles, Map<ActionV2, Integer> timing) {
+	public Variables(Map<Vehicle, List<ActionV2>> actions, Map<ActionV2, Vehicle> vehicles, Map<ActionV2, Integer> timing, TaskSet tasks) {
 		this.actions = actions;
 		this.vehicles = vehicles;
 		this.timing = timing;
+		this.allTasks = tasks;
 	}
 
 	public Variables(Variables A) {
@@ -29,23 +33,63 @@ public class Variables {
 
 		this.timing = new HashMap<ActionV2, Integer>(A.timing);
 		this.vehicles = new HashMap<ActionV2, Vehicle>(A.vehicles);
+		this.allTasks = A.allTasks;
 	}
 
+	/**
+	 * Checks that each task is picked up and delivered at least once
+	 */
+	public boolean checkDelivery() {
+		for (Task t: allTasks) {
+			ActionV2 pickup = new ActionV2(true, t);
+			ActionV2 delivery = pickup.opposite();
 
-	public boolean checkPossibleWeight(Vehicle v) {
+			// each task needs to have a pickup & delivery time, vehicle
+			if (!timing.containsKey(pickup) || !timing.containsKey(delivery))
+				return false;
+			if (!vehicles.containsKey(pickup) || !vehicles.containsKey(delivery))
+				return false;
+
+			// the stored actions need to correspond
+			ActionV2 storedPickup = actions.get(vehicles.get(pickup)).get(timing.get(pickup) - 1);
+			ActionV2 storedDelivery = actions.get(vehicles.get(delivery)).get(timing.get(delivery) - 1);
+			if(!pickup.equals(storedPickup) || !delivery.equals(storedDelivery))
+				return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Check that the vehicle's actions have corresponding entries in the timing map
+	 */
+	public boolean checkTiming(Vehicle v) {
 		List<ActionV2> actions = this.actions.get(v);
-		int actualWeight = 0;
-		int capacity = v.capacity();
 
-		for (ActionV2 a : actions) {
-			actualWeight += a.isPickup ? a.task.weight : -a.task.weight;
-			if (actualWeight > capacity) {
+		for (int i = 0; i < actions.size(); i++) {
+			if (i + 1 != timing.get(actions.get(i))) {
 				return false;
 			}
 		}
 		return true;
 	}
 
+	/**
+	 * Check that the vehicle's actions have corresponding entries in the vehicles map
+	 */
+	public boolean checkVehicles(Vehicle v) {
+		for (ActionV2 a : actions.get(v)) {
+			if (vehicles.get(a) != v || vehicles.get(a.opposite()) != v) {
+				// double verification
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Check for each task that pickup happens before delivery
+	 * TODO use timing map instead
+	 */
 	public boolean checkOrder(Vehicle v) {
 		Set<ActionV2> pickedupTasks = new HashSet<ActionV2>();
 		List<ActionV2> actions = this.actions.get(v);
@@ -60,23 +104,17 @@ public class Variables {
 		return true;
 	}
 
-
-	public boolean checkTiming(Vehicle v) {
+	/**
+	 * Checks that the vehicle's weight limit is respected at each time instant
+	 */
+	public boolean checkPossibleWeight(Vehicle v) {
 		List<ActionV2> actions = this.actions.get(v);
+		int currentWeight = 0;
+		int capacity = v.capacity();
 
-		for (int i = 0; i < actions.size(); i++) {
-			if (i + 1 != timing.get(actions.get(i))) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-
-	public boolean checkVehicles(Vehicle v) {
-		for (ActionV2 a : actions.get(v)) {
-			if (vehicles.get(a) != v || vehicles.get(a.opposite()) != v) {
-				// double verification
+		for (ActionV2 a : actions) {
+			currentWeight += a.isPickup ? a.task.weight : -a.task.weight;
+			if (currentWeight > capacity) {
 				return false;
 			}
 		}
@@ -100,6 +138,10 @@ public class Variables {
 
 	public boolean checkConstraints(List<Vehicle> orderedVehicles) {
 		boolean pass = true;
+		if(!checkDelivery()) {
+			System.out.println("Some tasks aren't delivered");
+			pass = false;
+		}
 		for (Vehicle v : orderedVehicles) {
 			if (!checkOrder(v)) {
 				System.out.println("Order problem for vehicle : " + v.id());
