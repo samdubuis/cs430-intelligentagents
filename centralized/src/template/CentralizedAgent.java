@@ -26,6 +26,7 @@ public class CentralizedAgent implements CentralizedBehavior {
 	private static final int NO_IMPROVEMENT_THRESHOLD = 1000;
 	private static final int CHANGE_VEHICLE_COUNT = 10;
 	private static final int CHANGE_ORDER_COUNT = 10;
+	private static final double CHANGE_PROBABILITY = 1;
 
 	private Topology topology;
 	private TaskDistribution distribution;
@@ -46,7 +47,7 @@ public class CentralizedAgent implements CentralizedBehavior {
 			System.out.println("There was a problem loading the configuration file.");
 		}
 
-		if(ls != null) {
+		if (ls != null) {
 			// the setup method cannot last more than timeout_setup milliseconds
 			timeout_setup = ls.get(LogistSettings.TimeoutKey.SETUP);
 			// the plan method cannot execute more than timeout_plan milliseconds
@@ -63,20 +64,24 @@ public class CentralizedAgent implements CentralizedBehavior {
 		long time_start = System.currentTimeMillis();
 		this.vehicleInOrder = vehicles;
 
+		// Create initial solution
 		Variables action = firstSolution(tasks);
-		if(action == null) {
+		if (action == null) {
 			System.err.println("Impossible to plan for this task distribution");
 			return null;
 		}
 		Variables bestVar = action;
+		long setup_time = System.currentTimeMillis() - time_start;
 
-
-		long aimedTime = (long) ((timeout_plan - 300) * 0.9);
+		// Estimate for how much time the algorithm can run
+		long aimedTime = (long) ((timeout_plan - setup_time) * 0.9);
+		if (aimedTime <= 0)
+			return computePlans(bestVar);
 		System.out.println("Estimated time (ms): " + aimedTime);
 
-
+		// Start RESTART_NUMBER different searches from an initial solution
 		for (int i = 0; i < RESTART_NUMBER; i++) {
-			Variables result = restartIterations(aimedTime / RESTART_NUMBER, action);
+			Variables result = restartIterations(aimedTime / RESTART_NUMBER - setup_time, action);
 			System.out.println("New iteration result: " + cost(result));
 			if (cost(result) < cost(bestVar)) {
 				bestVar = result;
@@ -84,19 +89,17 @@ public class CentralizedAgent implements CentralizedBehavior {
 			action = firstSolution(tasks);
 		}
 
-		System.out.println("final cost = " + cost(bestVar));
+		System.out.println("Final cost = " + cost(bestVar));
 		List<Plan> plans = computePlans(bestVar);
 
-
-		long time_end = System.currentTimeMillis();
-		long duration = time_end - time_start;
+		long duration = System.currentTimeMillis() - time_start;
 		System.out.println("The plan was generated in " + duration + " milliseconds.");
 
 		return plans;
 	}
 
-	public int cost(Variables action) {
-		int cost = 0;
+	public double cost(Variables action) {
+		double cost = 0;
 		List<Plan> plans = computePlans(action);
 		for (int i = 0; i < plans.size(); i++) {
 			cost += plans.get(i).totalDistance() * vehicleInOrder.get(i).costPerKm();
@@ -105,47 +108,58 @@ public class CentralizedAgent implements CentralizedBehavior {
 	}
 
 	private Variables restartIterations(long allowedTime, Variables action) {
-
+		// Track processing time
 		long time_start = System.currentTimeMillis();
 		long elapsedTime = 0;
 
+		// Create additional history tracking, so we can "backtrack" if a branch is not promising
 		List<Variables> history = new ArrayList<Variables>();
 		history.add(action);
 		int noImprovementCount = 0;
 
-		int bestCost = cost(action);
+		// Track best solution seen so far
+		double bestCost = cost(action);
 		Variables bestVariables = action;
-		int i = 0;
 
 		while (elapsedTime < allowedTime) {
-			int previousCost = cost(action);
+			double previousCost = cost(action);
 
+			// Explore & choose best neighbor
 			List<Variables> neighbors = chooseNeighbors(action, CHANGE_VEHICLE_COUNT, CHANGE_ORDER_COUNT);
 			neighbors.add(action);
-			action = localChoice(neighbors, action);
+			Variables choice = localChoice(neighbors);
 
-			int currentCost = cost(action);
+			// If no new neighbor is found, no change can be operated => return
+			if (choice == null) {
+				System.out.println("Impossible");
+				return bestVariables;
+			}
+
+			// Evaluate new action
+			double currentCost = cost(choice);
 			if (currentCost < bestCost) {
 				bestCost = currentCost;
-				bestVariables = action;
+				bestVariables = choice;
 			}
 
-			if (currentCost < previousCost) {
-				noImprovementCount = 0;
-				history.add(action);
-			}
+			// Choose to keep or discard (NOTE: this logic was extracted from the localChoice function and put here)
+			if (random.nextDouble() <= CHANGE_PROBABILITY) {
+				action = choice;
 
-			if (currentCost == previousCost) {
-				noImprovementCount++;
-				if (noImprovementCount >= NO_IMPROVEMENT_THRESHOLD) {
+				if (currentCost < previousCost) {
 					noImprovementCount = 0;
-					//System.out.println("ROLLBACK");
-					int index = Math.max(history.size() - ROLLBACK_DEPTH, 0);
-					history = history.subList(0, index);
-					action = history.get(history.size() - 1);
+					history.add(action);
+				} else {
+					noImprovementCount++;
+					if (noImprovementCount >= NO_IMPROVEMENT_THRESHOLD) {
+						noImprovementCount = 0;
+						//System.out.println("ROLLBACK");
+						int index = Math.max(history.size() - ROLLBACK_DEPTH, 0);
+						history = history.subList(0, index);
+						action = history.get(history.size() - 1);
+					}
 				}
 			}
-			i++;
 
 			elapsedTime = System.currentTimeMillis() - time_start;
 		}
@@ -164,7 +178,7 @@ public class CentralizedAgent implements CentralizedBehavior {
 
 		for (Task task : tasks) {
 			List<Vehicle> potentialVehicles = vehiclesWithSufficientCapacity(vehicleInOrder, task.weight);
-			if(potentialVehicles.size() <= 0)
+			if (potentialVehicles.size() <= 0)
 				break;
 			Vehicle vehicle = potentialVehicles.get(random.nextInt(potentialVehicles.size()));
 
@@ -181,7 +195,7 @@ public class CentralizedAgent implements CentralizedBehavior {
 		}
 
 		Variables vars = new Variables(actions, vehicles, time, tasks);
-		if(!vars.checkConstraints(vehicleInOrder))
+		if (!vars.checkConstraints(vehicleInOrder))
 			return null;
 		return vars;
 	}
@@ -253,22 +267,27 @@ public class CentralizedAgent implements CentralizedBehavior {
 	}
 
 	private Variables changeVehicle(Variables action, Vehicle v1, Vehicle v2, Task task, boolean isPosRandom) {
-
+		// Create a new variable assignment
 		Variables newA = new Variables(action);
 
 		ActionV2 pickup = new ActionV2(true, task);
 		ActionV2 delivery = pickup.opposite();
 
+		// Delete the task from v1
 		int pickupTime = newA.timing.get(pickup);
 		int deliveryTime = newA.timing.get(delivery);
 
-		newA.checkConstraints(vehicleInOrder);
+		if(!newA.checkConstraints(vehicleInOrder)) {
+			System.err.println("Fatal error: given variables violate constraints");
+			return null;
+		}
 
 		newA.actions.get(v1).remove(deliveryTime - 1);
 		newA.actions.get(v1).remove(pickupTime - 1);
 
 		newA.updateTime(v1);
 
+		// TODO
 		if (isPosRandom && newA.actions.get(v2).size() > 0) {
 			Variables tentativeA;
 			List<ActionV2> v2NewActions;
@@ -300,7 +319,6 @@ public class CentralizedAgent implements CentralizedBehavior {
 	}
 
 	private List<Variables> chooseNeighbors(Variables action, int changeVehicleCount, int changeOrderCount) {
-
 		List<Variables> neighbors = new ArrayList<Variables>();
 
 		int i = 0;
@@ -324,14 +342,15 @@ public class CentralizedAgent implements CentralizedBehavior {
 		return neighbors;
 	}
 
-	private Variables localChoice(List<Variables> neighbors, Variables actual) {
+	private Variables localChoice(List<Variables> neighbors) {
+		if (neighbors.size() <= 0)
+			return null;
 
-		double CHANGE_PROBABILITY = 1;
 		List<Variables> bestNeighbors = new ArrayList<Variables>();
-		int bestCost = Integer.MAX_VALUE;
+		double bestCost = Double.POSITIVE_INFINITY;
 
 		for (Variables neighbor : neighbors) {
-			int cost = cost(neighbor);
+			double cost = cost(neighbor);
 
 			if (cost == bestCost) {
 				bestNeighbors.add(neighbor);
@@ -344,13 +363,7 @@ public class CentralizedAgent implements CentralizedBehavior {
 			}
 		}
 
-		Variables next = actual;
-
-		if (random.nextDouble() <= CHANGE_PROBABILITY) {
-			next = bestNeighbors.get(random.nextInt(bestNeighbors.size()));
-		}
-
-		return next;
+		return bestNeighbors.get(random.nextInt(bestNeighbors.size()));
 	}
 
 	private Variables randomSwapActions(Variables action) {
