@@ -39,7 +39,6 @@ public class Variables {
 		this.vehicles = new HashMap<ActionV2, Vehicle>(A.vehicles);
 	}
 	
-	
 
 
 	public boolean checkPossibleWeight(Vehicle v) {
