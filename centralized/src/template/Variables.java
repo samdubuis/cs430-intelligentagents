@@ -14,7 +14,7 @@ public class Variables {
 	public Map<Vehicle, List<ActionV2>> actions;
 	public Map<ActionV2, Vehicle> vehicles;
 	public Map<ActionV2, Integer> timing;
-	private final TaskSet allTasks;
+	public final TaskSet allTasks;
 
 	public Variables(Map<Vehicle, List<ActionV2>> actions, Map<ActionV2, Vehicle> vehicles, Map<ActionV2, Integer> timing, TaskSet tasks) {
 		this.actions = actions;

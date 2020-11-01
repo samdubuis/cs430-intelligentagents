@@ -224,38 +224,32 @@ public class CentralizedAgent implements CentralizedBehavior {
 	}
 
 	private Variables randomChangeVehicle(Variables A) {
+		// Choose a random task, among all available
+		TaskSet tasks = A.allTasks;
 
-		Set<ActionV2> actions = A.vehicles.keySet();
-
-		int actionIndex = random.nextInt(actions.size());
+		int taskIndex = random.nextInt(tasks.size());
 		int i = 0;
-		ActionV2 action = null;
+		Task task = null;
 
-		for (ActionV2 a : actions) {
-			if (i == actionIndex) {
-				action = a;
+		for (Task t : tasks) { // tasks iterator is in a deterministic order
+			if (i == taskIndex) {
+				task = t;
+				break;
 			}
 			i++;
 		}
 
-		Vehicle v1 = A.vehicles.get(action);
-		Vehicle v2 = null;
-		Set<Vehicle> vehicles = A.actions.keySet();
-		int v2Index = 0;
+		// Choose a vehicle to exchange with
+		Vehicle v1 = A.vehicles.get(new ActionV2(true, task));
+		Vehicle v2;
+		List<Vehicle> vehicles = vehicleInOrder;
 		do {
-			int j = 0;
-			v2Index = random.nextInt(A.actions.keySet().size());
-			for (Vehicle v : vehicles) {
-				if (j == v2Index) {
-					v2 = v;
-				}
-				j++;
-			}
+			int v2Index = random.nextInt(vehicles.size());
+			v2 = vehicles.get(v2Index);
+		} while (v1 == v2); // TODO: what if there is only 1 vehicle !!
 
-		} while (v1 == v2);
-
-		Task randomTask = action.task;
-		return changeVehicle(A, v1, v2, randomTask, RANDOM_INSERTIONS);
+		// Do the exchange between v1 and v2
+		return changeVehicle(A, v1, v2, task, RANDOM_INSERTIONS);
 	}
 
 	private Variables changeVehicle(Variables action, Vehicle v1, Vehicle v2, Task task, boolean isPosRandom) {
@@ -361,18 +355,12 @@ public class CentralizedAgent implements CentralizedBehavior {
 
 	private Variables randomSwapActions(Variables action) {
 
-		Set<Vehicle> vehicles = action.actions.keySet();
+		List<Vehicle> vehicles = vehicleInOrder;
 		Vehicle randomVehicle = null;
 
 		do {
-			int i = 0;
 			int vehicleIndex = random.nextInt(vehicles.size());
-			for (Vehicle v : vehicles) {
-				if (i == vehicleIndex) {
-					randomVehicle = v;
-				}
-				i++;
-			}
+			randomVehicle = vehicles.get(vehicleIndex);
 		} while (action.actions.get(randomVehicle).size() == 0);
 
 		List<ActionV2> actions = action.actions.get(randomVehicle);
