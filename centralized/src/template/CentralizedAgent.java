@@ -107,6 +107,76 @@ public class CentralizedAgent implements CentralizedBehavior {
 		return cost;
 	}
 
+	private List<Plan> computePlans(Variables action) {
+		Map<Vehicle, List<ActionV2>> vehiclesActions = action.actions;
+		List<Plan> result = new ArrayList<Plan>();
+		for (Vehicle v : vehicleInOrder) {
+			City current = v.homeCity();
+			List<ActionV2> actions = vehiclesActions.get(v);
+			Plan plan = new Plan(v.homeCity());
+			for (ActionV2 a : actions) {
+				if (a.isPickup) {
+					for (City city : current.pathTo(a.task.pickupCity)) {
+						plan.appendMove(city);
+					}
+					current = a.task.pickupCity;
+					plan.appendPickup(a.task);
+				} else {
+					for (City city : current.pathTo(a.task.deliveryCity)) {
+						plan.appendMove(city);
+					}
+					current = a.task.deliveryCity;
+					plan.appendDelivery(a.task);
+				}
+			}
+			result.add(plan);
+		}
+		return result;
+	}
+
+	private Variables firstSolution(TaskSet tasks) {
+		Map<Vehicle, List<ActionV2>> actions = new HashMap<Vehicle, List<ActionV2>>();
+		Map<ActionV2, Integer> time = new HashMap<ActionV2, Integer>();
+		Map<ActionV2, Vehicle> vehicles = new HashMap<ActionV2, Vehicle>();
+
+		for (Vehicle vehicle : vehicleInOrder) {
+			actions.put(vehicle, new ArrayList<ActionV2>());
+		}
+
+		for (Task task : tasks) {
+			List<Vehicle> potentialVehicles = vehiclesWithSufficientCapacity(vehicleInOrder, task.weight);
+			if (potentialVehicles.size() <= 0)
+				break;
+			Vehicle vehicle = potentialVehicles.get(random.nextInt(potentialVehicles.size()));
+
+			ActionV2 action = new ActionV2(true, task);
+			actions.get(vehicle).add(action);
+			int actionTime = actions.get(vehicle).size();
+			time.put(action, actionTime);
+			vehicles.put(action, vehicle);
+
+			action = new ActionV2(false, task);
+			actions.get(vehicle).add(action);
+			time.put(action, actionTime + 1);
+			vehicles.put(action, vehicle);
+		}
+
+		Variables vars = new Variables(actions, vehicles, time, tasks);
+		if (!vars.checkConstraints(vehicleInOrder))
+			return null;
+		return vars;
+	}
+
+	private List<Vehicle> vehiclesWithSufficientCapacity(List<Vehicle> vehicles, int weight) {
+		List<Vehicle> result = new ArrayList<Vehicle>();
+		for (Vehicle v : vehicles) {
+			if (v.capacity() >= weight + v.getCurrentTasks().weightSum()) {
+				result.add(v);
+			}
+		}
+		return result;
+	}
+
 	private Variables restartIterations(long allowedTime, Variables action) {
 		// Track processing time
 		long time_start = System.currentTimeMillis();
@@ -167,74 +237,55 @@ public class CentralizedAgent implements CentralizedBehavior {
 		return bestVariables;
 	}
 
-	private Variables firstSolution(TaskSet tasks) {
-		Map<Vehicle, List<ActionV2>> actions = new HashMap<Vehicle, List<ActionV2>>();
-		Map<ActionV2, Integer> time = new HashMap<ActionV2, Integer>();
-		Map<ActionV2, Vehicle> vehicles = new HashMap<ActionV2, Vehicle>();
+	private List<Variables> chooseNeighbors(Variables action, int changeVehicleCount, int changeOrderCount) {
+		int MAX_TRIES = 1000;
+		List<Variables> neighbors = new ArrayList<Variables>();
 
-		for (Vehicle vehicle : vehicleInOrder) {
-			actions.put(vehicle, new ArrayList<ActionV2>());
+		int i = 0;
+		for (int tries = 0; tries < MAX_TRIES && i < changeVehicleCount; tries++) {
+			Variables n = randomChangeVehicle(action);
+			if (n != null) {
+				assert n.checkConstraints(vehicleInOrder);
+				neighbors.add(n);
+				i++;
+			}
 		}
 
-		for (Task task : tasks) {
-			List<Vehicle> potentialVehicles = vehiclesWithSufficientCapacity(vehicleInOrder, task.weight);
-			if (potentialVehicles.size() <= 0)
-				break;
-			Vehicle vehicle = potentialVehicles.get(random.nextInt(potentialVehicles.size()));
-
-			ActionV2 action = new ActionV2(true, task);
-			actions.get(vehicle).add(action);
-			int actionTime = actions.get(vehicle).size();
-			time.put(action, actionTime);
-			vehicles.put(action, vehicle);
-
-			action = new ActionV2(false, task);
-			actions.get(vehicle).add(action);
-			time.put(action, actionTime + 1);
-			vehicles.put(action, vehicle);
+		int j = 0;
+		for (int tries = 0; tries < MAX_TRIES && j < changeOrderCount; tries++) {
+			Variables n = randomSwapActions(action);
+			if(n != null) {
+				assert n.checkConstraints(vehicleInOrder);
+				neighbors.add(n);
+				j++;
+			}
 		}
 
-		Variables vars = new Variables(actions, vehicles, time, tasks);
-		if (!vars.checkConstraints(vehicleInOrder))
+		return neighbors;
+	}
+
+	private Variables localChoice(List<Variables> neighbors) {
+		if (neighbors.size() <= 0)
 			return null;
-		return vars;
-	}
 
-	private List<Vehicle> vehiclesWithSufficientCapacity(List<Vehicle> vehicles, int weight) {
-		List<Vehicle> result = new ArrayList<Vehicle>();
-		for (Vehicle v : vehicles) {
-			if (v.capacity() >= weight + v.getCurrentTasks().weightSum()) {
-				result.add(v);
+		List<Variables> bestNeighbors = new ArrayList<Variables>();
+		double bestCost = Double.POSITIVE_INFINITY;
+
+		for (Variables neighbor : neighbors) {
+			double cost = cost(neighbor);
+
+			if (cost == bestCost) {
+				bestNeighbors.add(neighbor);
+			}
+
+			if (cost < bestCost) {
+				bestNeighbors = new ArrayList<Variables>();
+				bestNeighbors.add(neighbor);
+				bestCost = cost;
 			}
 		}
-		return result;
-	}
 
-	private List<Plan> computePlans(Variables action) {
-		Map<Vehicle, List<ActionV2>> vehiclesActions = action.actions;
-		List<Plan> result = new ArrayList<Plan>();
-		for (Vehicle v : vehicleInOrder) {
-			City current = v.homeCity();
-			List<ActionV2> actions = vehiclesActions.get(v);
-			Plan plan = new Plan(v.homeCity());
-			for (ActionV2 a : actions) {
-				if (a.isPickup) {
-					for (City city : current.pathTo(a.task.pickupCity)) {
-						plan.appendMove(city);
-					}
-					current = a.task.pickupCity;
-					plan.appendPickup(a.task);
-				} else {
-					for (City city : current.pathTo(a.task.deliveryCity)) {
-						plan.appendMove(city);
-					}
-					current = a.task.deliveryCity;
-					plan.appendDelivery(a.task);
-				}
-			}
-			result.add(plan);
-		}
-		return result;
+		return bestNeighbors.get(random.nextInt(bestNeighbors.size()));
 	}
 
 	private Variables randomChangeVehicle(Variables A) {
@@ -315,57 +366,6 @@ public class CentralizedAgent implements CentralizedBehavior {
 		newA.updateVehicle(task, v2);
 
 		return newA;
-	}
-
-	private List<Variables> chooseNeighbors(Variables action, int changeVehicleCount, int changeOrderCount) {
-		int MAX_TRIES = 1000;
-		List<Variables> neighbors = new ArrayList<Variables>();
-
-		int i = 0;
-		for (int tries = 0; tries < MAX_TRIES && i < changeVehicleCount; tries++) {
-			Variables n = randomChangeVehicle(action);
-			if (n != null) {
-				assert n.checkConstraints(vehicleInOrder);
-				neighbors.add(n);
-				i++;
-			}
-		}
-
-		int j = 0;
-		for (int tries = 0; tries < MAX_TRIES && j < changeOrderCount; tries++) {
-			Variables n = randomSwapActions(action);
-			if(n != null) {
-				assert n.checkConstraints(vehicleInOrder);
-				neighbors.add(n);
-				j++;
-			}
-		}
-
-		return neighbors;
-	}
-
-	private Variables localChoice(List<Variables> neighbors) {
-		if (neighbors.size() <= 0)
-			return null;
-
-		List<Variables> bestNeighbors = new ArrayList<Variables>();
-		double bestCost = Double.POSITIVE_INFINITY;
-
-		for (Variables neighbor : neighbors) {
-			double cost = cost(neighbor);
-
-			if (cost == bestCost) {
-				bestNeighbors.add(neighbor);
-			}
-
-			if (cost < bestCost) {
-				bestNeighbors = new ArrayList<Variables>();
-				bestNeighbors.add(neighbor);
-				bestCost = cost;
-			}
-		}
-
-		return bestNeighbors.get(random.nextInt(bestNeighbors.size()));
 	}
 
 	private Variables randomSwapActions(Variables action) {
