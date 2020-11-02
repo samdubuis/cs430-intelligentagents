@@ -131,7 +131,7 @@ public class CentralizedAgent implements CentralizedBehavior {
 
 			// If no new neighbor is found, no change can be operated => return
 			if (choice == null) {
-				System.out.println("Impossible");
+				System.out.println("Impossible to make changes");
 				return bestVariables;
 			}
 
@@ -252,15 +252,21 @@ public class CentralizedAgent implements CentralizedBehavior {
 			}
 			i++;
 		}
+		assert task != null;
 
 		// Choose a vehicle to exchange with
 		Vehicle v1 = A.vehicles.get(new ActionV2(true, task));
-		Vehicle v2;
-		List<Vehicle> vehicles = vehicleInOrder;
-		do {
-			int v2Index = random.nextInt(vehicles.size());
-			v2 = vehicles.get(v2Index);
-		} while (v1 == v2); // TODO: what if there is only 1 vehicle !!
+
+		List<Vehicle> possibleVehicles = new ArrayList<Vehicle>();
+		for (Vehicle v : vehicleInOrder) {
+			if (v != v1 && v.capacity() >= task.weight)
+				possibleVehicles.add(v);
+		}
+
+		if (possibleVehicles.size() <= 0)
+			return null;
+		int v2Index = random.nextInt(possibleVehicles.size());
+		Vehicle v2 = possibleVehicles.get(v2Index);
 
 		// Do the exchange between v1 and v2
 		return changeVehicle(A, v1, v2, task, RANDOM_INSERTIONS);
@@ -277,36 +283,30 @@ public class CentralizedAgent implements CentralizedBehavior {
 		int pickupTime = newA.timing.get(pickup);
 		int deliveryTime = newA.timing.get(delivery);
 
-		if(!newA.checkConstraints(vehicleInOrder)) {
-			System.err.println("Fatal error: given variables violate constraints");
-			return null;
-		}
-
 		newA.actions.get(v1).remove(deliveryTime - 1);
 		newA.actions.get(v1).remove(pickupTime - 1);
 
 		newA.updateTime(v1);
 
-		// TODO
-		if (isPosRandom && newA.actions.get(v2).size() > 0) {
-			Variables tentativeA;
-			List<ActionV2> v2NewActions;
+		// Add the task to v2 (either at random position, or at the end)
+		if (isPosRandom) {
+			Variables tentativeA = new Variables(newA);
+			List<ActionV2> v2InitActions = tentativeA.actions.get(v2);
 
 			do {
-				tentativeA = new Variables(newA);
-				List<ActionV2> vehicleActions = tentativeA.actions.get(v2);
-				int iRand1 = random.nextInt(vehicleActions.size());
+				List<ActionV2> vehicleActions = new ArrayList<ActionV2>(v2InitActions);
+				int iRand1 = random.nextInt(vehicleActions.size() + 1);
 				vehicleActions.add(iRand1, pickup);
-				int iRand2 = random.nextInt(vehicleActions.size());
+				int iRand2 = iRand1 + 1 + random.nextInt(vehicleActions.size() - iRand1);
 				vehicleActions.add(iRand2, delivery);
+				tentativeA.actions.put(v2, vehicleActions);
+			} while (!tentativeA.checkPossibleWeight(v2));
 
-			} while (!(tentativeA.checkPossibleWeight(v2) && tentativeA.checkOrder(v2)));
-
-			v2NewActions = tentativeA.actions.get(v2);
+			List<ActionV2> v2NewActions = tentativeA.actions.get(v2);
 			newA.actions.put(v2, v2NewActions);
 
 		} else {
-			// Simply append add the end of the list
+			// Simply append to the end of the list
 			newA.actions.get(v2).add(pickup);
 			newA.actions.get(v2).add(delivery);
 		}
@@ -314,26 +314,28 @@ public class CentralizedAgent implements CentralizedBehavior {
 		newA.updateTime(v2);
 		newA.updateVehicle(task, v2);
 
-		newA.checkConstraints(vehicleInOrder);
 		return newA;
 	}
 
 	private List<Variables> chooseNeighbors(Variables action, int changeVehicleCount, int changeOrderCount) {
+		int MAX_TRIES = 1000;
 		List<Variables> neighbors = new ArrayList<Variables>();
 
 		int i = 0;
-		while (i < changeVehicleCount) {
+		for (int tries = 0; tries < MAX_TRIES && i < changeVehicleCount; tries++) {
 			Variables n = randomChangeVehicle(action);
 			if (n != null) {
-				neighbors.add(randomChangeVehicle(action));
+				assert n.checkConstraints(vehicleInOrder);
+				neighbors.add(n);
 				i++;
 			}
 		}
 
 		int j = 0;
-		while (j < changeOrderCount) {
+		for (int tries = 0; tries < MAX_TRIES && j < changeOrderCount; tries++) {
 			Variables n = randomSwapActions(action);
-			if (n != null) {
+			if(n != null) {
+				assert n.checkConstraints(vehicleInOrder);
 				neighbors.add(n);
 				j++;
 			}
@@ -367,33 +369,37 @@ public class CentralizedAgent implements CentralizedBehavior {
 	}
 
 	private Variables randomSwapActions(Variables action) {
+		// Choose a random vehicle for which actions will be swapped
+		List<Vehicle> possibleVehicles = new ArrayList<Vehicle>();
+		for (Vehicle v : vehicleInOrder) {
+			if (action.actions.get(v).size() > 0)
+				possibleVehicles.add(v);
+		}
+		if (possibleVehicles.size() <= 0) {
+			System.err.println("No vehicle has any tasks!");
+			return null;
+		}
 
-		List<Vehicle> vehicles = vehicleInOrder;
-		Vehicle randomVehicle = null;
+		int vehicleIndex = random.nextInt(possibleVehicles.size());
+		Vehicle randomVehicle = possibleVehicles.get(vehicleIndex);
 
-		do {
-			int vehicleIndex = random.nextInt(vehicles.size());
-			randomVehicle = vehicles.get(vehicleIndex);
-		} while (action.actions.get(randomVehicle).size() == 0);
-
+		// Select the two actions to be swapped
 		List<ActionV2> actions = action.actions.get(randomVehicle);
-		int t1Index, t2Index;
+		int t1Index = random.nextInt(actions.size());
+		int t2Index = random.nextInt(actions.size() - 1);
+		if (t2Index >= t1Index)
+			t2Index++;
 
-		do {
-			t1Index = random.nextInt(actions.size());
-			t2Index = random.nextInt(actions.size());
-
-		} while (t1Index == t2Index);
-
-		return swapActions(action, randomVehicle, actions.get(t1Index), actions.get(t2Index));
+		return swapActions(action, randomVehicle, t1Index, t2Index);
 	}
 
-	private Variables swapActions(Variables action, Vehicle v, ActionV2 a1, ActionV2 a2) {
-
+	private Variables swapActions(Variables action, Vehicle v, int index1, int index2) {
+		// Create a new assignment swapping the two indices
 		Variables newA = new Variables(action);
 		List<ActionV2> vehiclesActions = newA.actions.get(v);
-		int index1 = vehiclesActions.indexOf(a1);
-		int index2 = vehiclesActions.indexOf(a2);
+
+		ActionV2 a1 = vehiclesActions.get(index1);
+		ActionV2 a2 = vehiclesActions.get(index2);
 
 		vehiclesActions.set(index1, a2);
 		vehiclesActions.set(index2, a1);
