@@ -26,7 +26,7 @@ public class CentralizedAgent implements CentralizedBehavior {
 	private static final int NO_IMPROVEMENT_THRESHOLD = 1000;
 	private static final int CHANGE_VEHICLE_COUNT = 10;
 	private static final int CHANGE_ORDER_COUNT = 10;
-	private static final double CHANGE_PROBABILITY = 1;
+	private static final double CHANGE_PROBABILITY = 0.8;
 
 	private Topology topology;
 	private TaskDistribution distribution;
@@ -225,7 +225,7 @@ public class CentralizedAgent implements CentralizedBehavior {
 					if (noImprovementCount >= NO_IMPROVEMENT_THRESHOLD) {
 						noImprovementCount = 0;
 						//System.out.println("ROLLBACK");
-						int index = Math.max(history.size() - ROLLBACK_DEPTH, 0);
+						int index = Math.max(history.size() - ROLLBACK_DEPTH, 1);
 						history = history.subList(0, index);
 						action = history.get(history.size() - 1);
 					}
