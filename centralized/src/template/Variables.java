@@ -163,11 +163,9 @@ public class Variables {
 		return pass;
 	}
 
-	public void print(Vehicle v) {
-		List<ActionV2> actions = this.actions.get(v);
-		System.out.println(actions.size() + " actions:");
-		for (ActionV2 action : actions) {
-			System.out.println(action);
+	public void print(List<Vehicle> orderedVehicles) {
+		for(Vehicle v: orderedVehicles) {
+			System.out.println("Vehicle " + v.id() + ": " + actions.get(v).size() + " actions");
 		}
 	}
 }

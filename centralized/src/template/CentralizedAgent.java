@@ -90,6 +90,7 @@ public class CentralizedAgent implements CentralizedBehavior {
 		}
 
 		System.out.println("Final cost = " + cost(bestVar));
+		bestVar.print(vehicleInOrder);
 		List<Plan> plans = computePlans(bestVar);
 
 		long duration = System.currentTimeMillis() - time_start;
