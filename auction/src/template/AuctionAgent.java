@@ -1,8 +1,11 @@
 package template;
 
+import java.util.AbstractCollection;
 //the list of imports
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import logist.LogistPlatform;
@@ -18,6 +21,7 @@ import logist.task.TaskDistribution;
 import logist.task.TaskSet;
 import logist.topology.Topology;
 import logist.topology.Topology.City;
+import template.Planner.Variables;
 
 /**
  * A very simple auction agent that assigns all tasks to its first vehicle and
@@ -33,9 +37,21 @@ public class AuctionAgent implements AuctionBehavior {
 	private Random random;
 	private Vehicle vehicle;
 	private City currentCity;
+	
 	private long timeoutSetup;
 	private long timeoutPlan;
 	private long timeoutBid;
+	
+	private List<Long> adversBids;
+	private Map<City, Double> TDH;
+	private List<Vehicle> adversVehicle;
+	private double connectivity;
+	
+	private Variables ourVar;
+	private Variables adversVar;
+	private Variables ourPotentialNextVar;
+	private Variables adversPotentialNextVar;
+	private int round = 0;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution distribution,
@@ -57,71 +73,75 @@ public class AuctionAgent implements AuctionBehavior {
 		ourVar = Planner.firstSolution(agent.getTasks(), agent.vehicles());
 		adversVar = Planner.firstSolution(agent.getTasks(), adversVehicle);
 		
-				
+		TDH = new HashMap<City, Double>();
+		calculateTDH();
 		
+		connectivity = calculateAverageConnectivity(topology);
 		
 	}
 
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
-		if (winner == agent.id()) {
-			currentCity = previous.deliveryCity;
-		}
+		if(bids.length > 1) {
+            adversBids.add(bids[1]);
+        }
+
+        if (winner == agent.id()) {
+            ourVar = ourPotentialNextVar;
+        } else {
+            adversVar = adversPotentialNextVar;
+        }
+        round++;
 	}
 	
 	@Override
 	public Long askPrice(Task task) {
+		long aimedTime = (long) Math.max((timeoutBid - 300) * 0.9, timeoutBid * 0.5);
 
-		if (vehicle.capacity() < task.weight)
-			return null;
+        long ourCost = ourMarginalCost(task, aimedTime/2);
+        long adversCost = adversMarginalCost(task, aimedTime/2);
 
-		long distanceTask = task.pickupCity.distanceUnitsTo(task.deliveryCity);
-		long distanceSum = distanceTask
-				+ currentCity.distanceUnitsTo(task.pickupCity);
-		double marginalCost = Measures.unitsToKM(distanceSum
-				* vehicle.costPerKm());
-
-		double ratio = 1.0 + (random.nextDouble() * 0.05 * task.id);
-		double bid = ratio * marginalCost;
-
-		return (long) Math.round(bid);
-	}
-
-	@Override
-	public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
+        long bid = costComparisonBid(ourCost, adversCost);
 		
-//		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
-
-		Plan planVehicle1 = naivePlan(vehicle, tasks);
-
-		List<Plan> plans = new ArrayList<Plan>();
-		plans.add(planVehicle1);
-		while (plans.size() < vehicles.size())
-			plans.add(Plan.EMPTY);
-
-		return plans;
+		
+		return bid;
 	}
 
-	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
-		City current = vehicle.getCurrentCity();
-		Plan plan = new Plan(current);
+	private long costComparisonBid(long ourCost, long adversCost) {
+		long bid;
 
-		for (Task task : tasks) {
-			// move: current city => pickup location
-			for (City city : current.pathTo(task.pickupCity))
-				plan.appendMove(city);
+        long deltaMC = Math.abs(adversCost-ourCost);
 
-			plan.appendPickup(task);
+        if (ourCost <= adversCost) {
+            bid = (long) (ourCost + deltaMC * 0.5);
+        }
+        else {
+            bid = (long) (ourCost + deltaMC * (-0.5));
+        }
 
-			// move: pickup location => delivery location
-			for (City city : task.path())
-				plan.appendMove(city);
-
-			plan.appendDelivery(task);
-
-			// set current city
-			current = task.deliveryCity;
-		}
-		return plan;
+        //System.err.println("Cost estimates: " + ourCost + " VS " + adversCost + " ===> bid: " + bid);
+        return bid;
 	}
+	
+	
+	@Override
+    public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
+        long aimedTime = (long) Math.max((timeoutPlan - 300) * 0.9, timeoutPlan * 0.5);
+
+        Planner.Variables bestVarFromScratch = Planner.plan(vehicles, tasks, aimedTime);
+        Planner.Variables bestPlans;
+
+        if(ourVar != null && bestVarFromScratch.cost(vehicles) > ourVar.cost(vehicles)) {
+            bestPlans = ourVar;
+            //System.err.println("Using scratch variables");
+        } else {
+            //System.err.println("Using old variables");
+            bestPlans = bestVarFromScratch;
+        }
+
+        //System.out.println("Final cost: " + bestPlans.cost(vehicles));
+
+        return Planner.computePlans(bestPlans, vehicles, tasks);
+    }
+
 }
