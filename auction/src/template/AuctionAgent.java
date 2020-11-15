@@ -106,9 +106,9 @@ public class AuctionAgent implements AuctionBehavior {
 
 		long bid = costComparisonBid(ourCost, adversCost);
 
-		if(round > 4) {
-			bid = (long) Math.max(bid, 0.8 * getAdversMedianBid());
-		}
+//		if(round > 4) {
+//			bid = (long) Math.max(bid, 0.8 * getAdversMedianBid());
+//		}
 
 		return bid;
 	}
@@ -195,7 +195,7 @@ public class AuctionAgent implements AuctionBehavior {
 			double threshold = 0.2;
 			pArrival = Math.max(pArrival, threshold);
 
-			double heuristic = (1D / pArrival);
+			double heuristic = (1 / pArrival);
 
 			TDH.put(to, heuristic);
 		}
