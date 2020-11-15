@@ -7,6 +7,7 @@ package template;
 	import logist.simulation.Vehicle;
 	import logist.task.Task;
 	import logist.task.TaskSet;
+import logist.topology.Topology;
 import logist.topology.Topology.City;
 
 import java.util.*;
@@ -128,10 +129,6 @@ public class Planner {
 			return true;
 		}
 
-		/**
-		 * Check for each task that pickup happens before delivery
-		 * TODO use timing map instead
-		 */
 		public boolean checkOrder(Vehicle v) {
 			Set<ActionV2> pickedupTasks = new HashSet<ActionV2>();
 			List<ActionV2> actions = this.actions.get(v);
@@ -210,6 +207,10 @@ public class Planner {
 				System.out.println("Vehicle " + v.id() + ": " + actions.get(v).size() + " actions");
 			}
 		}
+
+		public int getTaskCount() {
+			return vehicles.keySet().size() / 2;
+		}
 	}
 	
 	
@@ -276,7 +277,44 @@ public class Planner {
 		}
 		return result;
 	}
+	
+	public static List<Plan> computePlans(Variables variables, List<Vehicle> vehicleInOrder, TaskSet taskSet) {
+        Map<Vehicle, List<ActionV2>> vehiclesActions = variables.actions;
+        List<Plan> result = new ArrayList<Plan>();
+        for (Vehicle v : vehicleInOrder) {
+            Topology.City current = v.homeCity();
+            List<ActionV2> actions = vehiclesActions.get(v);
+            Plan plan = new Plan(v.homeCity());
+            for(ActionV2 a : actions) {
+                if (a.isPickup) {
+                    for (Topology.City city : current.pathTo(a.task.pickupCity)) {
+                        plan.appendMove(city);
+                    }
+                    current = a.task.pickupCity;
+                    plan.appendPickup(getTask(taskSet, a.task.id));
+                } else {
+                    for (Topology.City city : current.pathTo(a.task.deliveryCity)) {
+                        plan.appendMove(city);
+                    }
+                    current = a.task.deliveryCity;
+                    plan.appendDelivery(getTask(taskSet, a.task.id));
+                }
+            }
+            result.add(plan);
+        }
+        return result;
+    }
 
+	
+	private static Task getTask(TaskSet set, int id) {
+        for(Task t: set) {
+            if(t.id == id) {
+                return t;
+            }
+        }
+        return null;
+    }
+	
 	public static Variables firstSolution(TaskSet tasks, List<Vehicle> vehicleInOrder) {
 		Map<Vehicle, List<ActionV2>> actions = new HashMap<Vehicle, List<ActionV2>>();
 		Map<ActionV2, Integer> time = new HashMap<ActionV2, Integer>();
@@ -556,5 +594,72 @@ public class Planner {
 		}
 	}
 
+	
+	
+	
+	public static Variables planWithFirstSolution(long allowedTime, Variables A, List<Vehicle> vehiclesInOrder) {
+
+        long time_start = System.currentTimeMillis();
+        long elapsedTime = 0;
+
+        List<Variables> history = new ArrayList<Variables>();
+        history.add(A);
+        int noImprovementCount = 0;
+
+        double bestCost = cost(A, vehiclesInOrder);
+        Variables bestVariables = A;
+
+        while(elapsedTime < allowedTime) {
+            double previousCost = cost(A, vehiclesInOrder);
+
+            List<Variables> neighbors = chooseNeighbors(A, CHANGE_VEHICLE_COUNT, CHANGE_ORDER_COUNT, vehiclesInOrder);
+            neighbors.add(A);
+            A = localChoice(neighbors, vehiclesInOrder);
+
+            double currentCost = cost(A, vehiclesInOrder);
+            if (currentCost < bestCost) {
+                bestCost = currentCost;
+                bestVariables = A;
+            }
+
+            if (currentCost < previousCost) {
+                noImprovementCount = 0;
+                history.add(A);
+            }
+
+            if (currentCost == previousCost) {
+                noImprovementCount++;
+                if (noImprovementCount >= NO_IMPROVEMENT_THRESHOLD) {
+                    noImprovementCount = 0;
+                    //System.out.println("ROLLBACK");
+                    int index = Math.max(history.size() - ROLLBACK_DEPTH, 1);
+                    history = history.subList(0, index);
+                    A = history.get(history.size() - 1);
+                }
+            }
+
+            elapsedTime = System.currentTimeMillis() - time_start;
+        }
+
+        return bestVariables;
+    }
+
+	
+	
+	public static void randomInsertTask(Variables variables, Task task, List<Vehicle> orderedVehicles) {
+
+        List<Vehicle> potentialVehicles = vehiclesWithSufficientCapacity(orderedVehicles, task.weight);
+        Vehicle vehicle = potentialVehicles.get(AuctionAgent.random.nextInt(potentialVehicles.size()));
+        ActionV2 pickupAction = new ActionV2(true, task);
+        variables.actions.get(vehicle).add(pickupAction);
+        int actionTime = variables.actions.get(vehicle).size();
+        variables.timing.put(pickupAction, actionTime);
+        variables.vehicles.put(pickupAction, vehicle);
+        ActionV2 deliveryAction = new ActionV2(false, task);
+        variables.actions.get(vehicle).add(deliveryAction);
+        variables.timing.put(deliveryAction, actionTime + 1);
+        variables.vehicles.put(deliveryAction, vehicle);
+    }
+	
 	
 }
