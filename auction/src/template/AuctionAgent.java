@@ -34,6 +34,7 @@ import template.Planner.Variables;
 @SuppressWarnings("unused")
 public class AuctionAgent implements AuctionBehavior {
 
+	private static final long AGGRESSIVITY = (long) 0.5;
 	private Topology topology;
 	private TaskDistribution distribution;
 	private Agent agent;
@@ -256,7 +257,7 @@ public class AuctionAgent implements AuctionBehavior {
 
 
 	
-	// function used to create some random vehicule to use for adversary
+	// function used to create some random vehicle to use for adversary
 	private List<Vehicle> createRandomVehicles() {
 		List<Vehicle> vehicles = new ArrayList<Vehicle>();
 
@@ -340,10 +341,10 @@ public class AuctionAgent implements AuctionBehavior {
 		long deltaMC = Math.abs(adversCost-ourCost);
 
 		if (ourCost <= adversCost) {
-			bid = (long) (ourCost + deltaMC * 0.5);
+			bid = (long) (ourCost + deltaMC * AGGRESSIVITY);
 		}
 		else {
-			bid = (long) (ourCost + deltaMC * (-0.5));
+			bid = (long) (ourCost + deltaMC * (1-AGGRESSIVITY));
 		}
 
 		return bid;
