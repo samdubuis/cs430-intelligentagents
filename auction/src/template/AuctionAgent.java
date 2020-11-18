@@ -106,6 +106,7 @@ public class AuctionAgent implements AuctionBehavior {
 
 		long bid = costComparisonBid(ourCost, adversCost);
 
+		// idea TODO do not bid more than 80% of opponent's median bid in order to not let him do very high bid against us
 //		if(round > 4) {
 //			bid = (long) Math.max(bid, 0.8 * getAdversMedianBid());
 //		}
@@ -142,7 +143,7 @@ public class AuctionAgent implements AuctionBehavior {
         double tch = TCH(acceptedTasks);
         double tdh = TDH(task, acceptedTasks);
         double ch = CH(task, acceptedTasks);
-        Long result = biasedMarginalCost(cost, tch, tdh, ch);
+        Long result = biasedMarginalCost(cost, 1, tdh, ch);
         return result;
 	}
 
@@ -153,7 +154,7 @@ public class AuctionAgent implements AuctionBehavior {
         double tch = TCH(acceptedTasks);
         double tdh = TDH(task, acceptedTasks);
         double ch = CH(task, acceptedTasks);
-        Long result = biasedMarginalCost(cost, tch, tdh, ch);
+        Long result = biasedMarginalCost(cost, 1, tdh, ch);
         return result;
 	}
 
@@ -175,8 +176,8 @@ public class AuctionAgent implements AuctionBehavior {
 	}
 
 	// function to compute the biased marginal cost
-	private Long biasedMarginalCost(long cost, double tch, double tdh2, double ch) {
-		double weightedTdh = Math.pow(tdh2, 1);
+	private Long biasedMarginalCost(long cost, double tch, double tdh, double ch) {
+		double weightedTdh = Math.pow(tdh, 1);
         double weightedCh = Math.pow(ch, 0.7);
         double result = Math.max(0, cost) * tch * weightedTdh * weightedCh;
 
@@ -349,15 +350,15 @@ public class AuctionAgent implements AuctionBehavior {
 	}
 	
 	
-	private double getAdversMedianBid() {
-		List<Long> bidCopy = new ArrayList<Long>(adversBids);
-		if(bidCopy.size() > 0) {
-			Collections.sort(bidCopy);
-			return bidCopy.get(bidCopy.size()/2);
-		}
-		return 1000L;
-	}
 	
+//	private double getAdversMedianBid() {
+//		List<Long> bidCopy = new ArrayList<Long>(adversBids);
+//		if(bidCopy.size() > 0) {
+//			Collections.sort(bidCopy);
+//			return bidCopy.get(bidCopy.size()/2);
+//		}
+//		return 1000L;
+//	}
 	private int getSelfTaskCount() {
         return ourVar.getTaskCount();
     }
