@@ -24,27 +24,26 @@ import java.util.*;
 @SuppressWarnings("unused")
 public class AuctionAgent implements AuctionBehavior {
 
-	private static final double AGGRESSIVITY = 0.5;
+	private static final double AGGRESSIVITY = 0.75;
 	private Topology topology;
 	private TaskDistribution distribution;
 	private Agent agent;
 	static Random random = new Random();
-	private Vehicle vehicle;
-	private City currentCity;
 
-	private long timeoutSetup;
 	private long timeoutPlan;
 	private long timeoutBid;
 
+	private Variables ourVar;
+	private Variables ourPotentialNextVar;
+
+	private Variables adversVar;
+	private Variables adversPotentialNextVar;
 	private List<Long> adversBids;
-	private Map<City, Double> TDH;
 	private List<Vehicle> adversVehicle;
+
+	private Map<City, Double> TDH;
 	private double connectivity;
 
-	private Variables ourVar;
-	private Variables adversVar;
-	private Variables ourPotentialNextVar;
-	private Variables adversPotentialNextVar;
 	private int round = 0;
 
 	@Override
@@ -52,15 +51,12 @@ public class AuctionAgent implements AuctionBehavior {
 					  Agent agent) {
 
 		long startTime = System.currentTimeMillis();
-		timeoutSetup = LogistPlatform.getSettings().get(LogistSettings.TimeoutKey.SETUP);
 		timeoutPlan = LogistPlatform.getSettings().get(LogistSettings.TimeoutKey.PLAN);
 		timeoutBid = LogistPlatform.getSettings().get(LogistSettings.TimeoutKey.BID);
 
 		this.topology = topology;
 		this.distribution = distribution;
 		this.agent = agent;
-		this.vehicle = agent.vehicles().get(0);
-		this.currentCity = vehicle.homeCity();
 
 		adversBids = new ArrayList<Long>();
 		adversVehicle = createRandomVehicles();
@@ -76,14 +72,18 @@ public class AuctionAgent implements AuctionBehavior {
 
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
-		if (bids.length > 1) {
-			adversBids.add(bids[1]);
+		long ourBid = bids[agent.id()];
+		int theirID = 1 - agent.id();
+		if (theirID >= 0 && theirID < bids.length) {
+			adversBids.add(bids[theirID]);
 		}
 
 		if (winner == agent.id()) {
 			ourVar = ourPotentialNextVar;
+			System.out.println("We won: " + ourBid + " " + Arrays.toString(bids));
 		} else {
 			adversVar = adversPotentialNextVar;
+			System.out.println("They won: " + ourBid + " " + Arrays.toString(bids));
 		}
 		round++;
 	}
@@ -96,6 +96,7 @@ public class AuctionAgent implements AuctionBehavior {
 		long adversCost = adversBiasedMarginalCost(task, aimedTime / 2);
 
 		long bid = costComparisonBid(ourCost, adversCost);
+		System.out.println("Our cost: " + ourCost + ", their cost: " + adversCost + ", our bid: " + bid);
 
 		// idea TODO do not bid more than 80% of opponent's median bid in order to not let him do very high bid against us
 //		if(round > 4) {
@@ -131,43 +132,39 @@ public class AuctionAgent implements AuctionBehavior {
 	private long adversBiasedMarginalCost(Task task, long l) {
 		long cost = adversMarginalCost(task, l);
 		int acceptedTasks = getAdversaryTaskCount();
-		double tch = TCH(acceptedTasks);
-		double tdh = TDH(task, acceptedTasks);
-		double ch = CH(task, acceptedTasks);
-		Long result = biasedMarginalCost(cost, 1, tdh, ch);
-		return result;
+		return biasedMarginalCost(task, cost, acceptedTasks);
 	}
 
 
 	private long ourBiasedMarginalCost(Task task, long l) {
 		long cost = ourMarginalCost(task, l);
 		int acceptedTasks = getSelfTaskCount();
-		double tch = TCH(acceptedTasks);
-		double tdh = TDH(task, acceptedTasks);
-		double ch = CH(task, acceptedTasks);
-		Long result = biasedMarginalCost(cost, 1, tdh, ch);
-		return result;
+		return biasedMarginalCost(task, cost, acceptedTasks);
 	}
 
 
 	// Task count heuristic
 	private double TCH(int acceptedTasks) {
-		return (acceptedTasks + 1) / (acceptedTasks + 2);
+		return (acceptedTasks + 1.) / (acceptedTasks + 2.);
 	}
 
 	// Task distribution heuristic
 	private double TDH(Task task, int acceptedTasks) {
-		return Math.pow(TDH.get(task.pickupCity), 1 / (acceptedTasks + 1));
+		return Math.pow(TDH.get(task.pickupCity), 1. / (acceptedTasks + 1));
 	}
 
 	// connectivity heuristic
 	private double CH(Task task, int acceptedTasks) {
 		double tmp = connectivity / connectivity(task.pickupCity, task.deliveryCity);
-		return Math.pow(tmp, (1 / (acceptedTasks + 1)));
+		return Math.pow(tmp, (1. / (acceptedTasks + 1)));
 	}
 
 	// function to compute the biased marginal cost
-	private Long biasedMarginalCost(long cost, double tch, double tdh, double ch) {
+	private Long biasedMarginalCost(Task task, long cost, int acceptedTasks) {
+		double tch = TCH(acceptedTasks);
+		double tdh = TDH(task, acceptedTasks);
+		double ch = CH(task, acceptedTasks);
+
 		double weightedTdh = Math.pow(tdh, 1);
 		double weightedCh = Math.pow(ch, 0.7);
 		double result = Math.max(0, cost) * tch * weightedTdh * weightedCh;
@@ -196,17 +193,16 @@ public class AuctionAgent implements AuctionBehavior {
 
 	// part for the connectivity
 	private double calculateAverageConnectivity(Topology topology2) {
-		int[] connectivities = new int[(int) Math.pow(topology.cities().size(), 2)];
+		double sumConnectivity = 0;
 
-		int i = 0;
 		for (City city1 : topology.cities()) {
 			for (City city2 : topology.cities()) {
-				connectivities[i] = connectivity(city1, city2);
-				i++;
+				sumConnectivity += connectivity(city1, city2);
 			}
 		}
 
-		return (Arrays.stream(connectivities).sum()) / (double) connectivities.length;
+		int numPairs = topology.size() * topology.size();
+		return sumConnectivity / numPairs;
 	}
 
 	private int connectivity(City city1, City city2) {
@@ -214,34 +210,32 @@ public class AuctionAgent implements AuctionBehavior {
 	}
 
 
-	// Marginal cost for our and for adversary
-	//
-	private long ourMarginalCost(Task task, long l) {
+	// Marginal cost for ourselves and for adversary
+	private Variables marginalCost(Task task, long l, Variables currentVars, List<Vehicle> orderedVehicles) {
 		long startTime = System.currentTimeMillis();
 		// Copy the current variables so that they are not modified at the end
-		Planner.Variables nextVariables = new Planner.Variables(ourVar);
+		Variables nextVariables = new Variables(currentVars);
 		// Insert the new task randomly into the next variables
-		Planner.randomInsertTask(nextVariables, task, agent.vehicles());
+		Planner.randomInsertTask(nextVariables, task, orderedVehicles);
 		long elapsedTime = System.currentTimeMillis() - startTime;
 
 		// Refine the next variables by calling the planner
-		nextVariables = Planner.planWithFirstSolution(l - elapsedTime, nextVariables, agent.vehicles());
+		nextVariables = Planner.planWithFirstSolution(l - elapsedTime, nextVariables, orderedVehicles);
+		return nextVariables;
+	}
+
+	private long ourMarginalCost(Task task, long l) {
+		Variables nextVariables = marginalCost(task, l, ourVar, agent.vehicles());
 		ourPotentialNextVar = nextVariables;
 
 		return (long) (Planner.cost(nextVariables, agent.vehicles()) - Planner.cost(ourVar, agent.vehicles()));
 	}
 
 	private long adversMarginalCost(Task task, long l) {
-		long startTime = System.currentTimeMillis();
-		Planner.Variables nextVariables = new Planner.Variables(adversVar); // Copy the current variables so that they are not modified at the end
-		Planner.randomInsertTask(nextVariables, task, adversVehicle); // Insert the new task randomly into the next variables
-		long elapsedTime = System.currentTimeMillis() - startTime;
-
-		nextVariables = Planner.planWithFirstSolution(l - elapsedTime, nextVariables, adversVehicle); // Refine the next variables by calling the planner
+		Variables nextVariables = marginalCost(task, l, adversVar, adversVehicle);
 		adversPotentialNextVar = nextVariables;
 
 		return (long) (Planner.cost(nextVariables, adversVehicle) - Planner.cost(adversVar, adversVehicle));
-
 	}
 
 
@@ -331,7 +325,7 @@ public class AuctionAgent implements AuctionBehavior {
 		if (ourCost <= adversCost) {
 			bid = (long) (ourCost + deltaMC * AGGRESSIVITY);
 		} else {
-			bid = (long) (ourCost + deltaMC * (1 - AGGRESSIVITY));
+			bid = (long) (ourCost + deltaMC * (AGGRESSIVITY - 1));
 		}
 
 		return bid;
