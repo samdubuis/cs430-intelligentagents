@@ -24,11 +24,11 @@ import java.util.*;
 @SuppressWarnings("unused")
 public class AuctionAgent implements AuctionBehavior {
 
-	private static final long AGGRESSIVITY = (long) 0.5;
+	private static final double AGGRESSIVITY = 0.5;
 	private Topology topology;
 	private TaskDistribution distribution;
 	private Agent agent;
-	static Random random;
+	static Random random = new Random();
 	private Vehicle vehicle;
 	private City currentCity;
 
@@ -62,15 +62,15 @@ public class AuctionAgent implements AuctionBehavior {
 		this.vehicle = agent.vehicles().get(0);
 		this.currentCity = vehicle.homeCity();
 
+		adversBids = new ArrayList<Long>();
 		adversVehicle = createRandomVehicles();
-		ourVar = Planner.firstSolution(agent.getTasks(), agent.vehicles());
-		adversVar = Planner.firstSolution(agent.getTasks(), adversVehicle);
+		ourVar = Planner.firstSolution(new HashSet<Task>(), agent.vehicles());
+		adversVar = Planner.firstSolution(new HashSet<Task>(), adversVehicle);
 
 		TDH = new HashMap<City, Double>();
 		calculateTDH();
 
 		connectivity = calculateAverageConnectivity(topology);
-
 	}
 
 

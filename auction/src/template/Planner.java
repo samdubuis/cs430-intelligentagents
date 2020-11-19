@@ -12,7 +12,6 @@ import java.util.*;
 public class Planner {
 
 	// ActionV2 Class from previous project
-
 	public static class ActionV2 {
 		public boolean isPickup; // pickup or delivery
 		public Task task;
@@ -47,15 +46,13 @@ public class Planner {
 
 
 	// Variable Class from previous project
-
-
 	public static class Variables {
 		public Map<Vehicle, List<ActionV2>> actions;
 		public Map<ActionV2, Vehicle> vehicles;
 		public Map<ActionV2, Integer> timing;
-		public final TaskSet allTasks;
+		public Set<Task> allTasks;
 
-		public Variables(Map<Vehicle, List<ActionV2>> actions, Map<ActionV2, Vehicle> vehicles, Map<ActionV2, Integer> timing, TaskSet tasks) {
+		public Variables(Map<Vehicle, List<ActionV2>> actions, Map<ActionV2, Vehicle> vehicles, Map<ActionV2, Integer> timing, Set<Task> tasks) {
 			this.actions = actions;
 			this.vehicles = vehicles;
 			this.timing = timing;
@@ -72,7 +69,7 @@ public class Planner {
 
 			this.timing = new HashMap<ActionV2, Integer>(A.timing);
 			this.vehicles = new HashMap<ActionV2, Vehicle>(A.vehicles);
-			this.allTasks = A.allTasks;
+			this.allTasks = new HashSet<>(A.allTasks);
 		}
 
 		/**
@@ -221,7 +218,6 @@ public class Planner {
 
 
 	public static Variables plan(List<Vehicle> orderedVehicles, TaskSet tasks, long allowedTime) {
-
 		Variables bestVariables = null;
 		for (int i = 0; i < RESTART_NUMBER; i++) {
 			Variables firstSolution = firstSolution(tasks, orderedVehicles);
@@ -247,31 +243,17 @@ public class Planner {
 		return cost;
 	}
 
-	private static List<Plan> computePlans(Variables action, List<Vehicle> vehicleInOrder) {
-		Map<Vehicle, List<ActionV2>> vehiclesActions = action.actions;
-		List<Plan> result = new ArrayList<Plan>();
-		for (Vehicle v : vehicleInOrder) {
-			City current = v.homeCity();
-			List<ActionV2> actions = vehiclesActions.get(v);
-			Plan plan = new Plan(v.homeCity());
-			for (ActionV2 a : actions) {
-				if (a.isPickup) {
-					for (City city : current.pathTo(a.task.pickupCity)) {
-						plan.appendMove(city);
-					}
-					current = a.task.pickupCity;
-					plan.appendPickup(a.task);
-				} else {
-					for (City city : current.pathTo(a.task.deliveryCity)) {
-						plan.appendMove(city);
-					}
-					current = a.task.deliveryCity;
-					plan.appendDelivery(a.task);
-				}
-			}
-			result.add(plan);
+	public static double totalDistance(Variables action, List<Vehicle> vehicleInOrder) {
+		double distance = 0;
+		List<Plan> plans = computePlans(action, vehicleInOrder);
+		for (Plan plan : plans) {
+			distance += plan.totalDistance();
 		}
-		return result;
+		return distance;
+	}
+
+	private static List<Plan> computePlans(Variables action, List<Vehicle> vehicleInOrder) {
+		return computePlans(action, vehicleInOrder, null);
 	}
 
 	public static List<Plan> computePlans(Variables variables, List<Vehicle> vehicleInOrder, TaskSet taskSet) {
@@ -287,13 +269,13 @@ public class Planner {
 						plan.appendMove(city);
 					}
 					current = a.task.pickupCity;
-					plan.appendPickup(getTask(taskSet, a.task.id));
+					plan.appendPickup(getTask(taskSet, a.task));
 				} else {
 					for (Topology.City city : current.pathTo(a.task.deliveryCity)) {
 						plan.appendMove(city);
 					}
 					current = a.task.deliveryCity;
-					plan.appendDelivery(getTask(taskSet, a.task.id));
+					plan.appendDelivery(getTask(taskSet, a.task));
 				}
 			}
 			result.add(plan);
@@ -302,16 +284,20 @@ public class Planner {
 	}
 
 
-	private static Task getTask(TaskSet set, int id) {
+	private static Task getTask(TaskSet set, Task task) {
+		if (set == null) {
+			return task;
+		}
+
 		for (Task t : set) {
-			if (t.id == id) {
+			if (t.id == task.id) {
 				return t;
 			}
 		}
 		return null;
 	}
 
-	public static Variables firstSolution(TaskSet tasks, List<Vehicle> vehicleInOrder) {
+	public static Variables firstSolution(Set<Task> tasks, List<Vehicle> vehicleInOrder) {
 		Map<Vehicle, List<ActionV2>> actions = new HashMap<Vehicle, List<ActionV2>>();
 		Map<ActionV2, Integer> time = new HashMap<ActionV2, Integer>();
 		Map<ActionV2, Vehicle> vehicles = new HashMap<ActionV2, Vehicle>();
@@ -347,7 +333,7 @@ public class Planner {
 	private static List<Vehicle> vehiclesWithSufficientCapacity(List<Vehicle> vehicles, int weight) {
 		List<Vehicle> result = new ArrayList<Vehicle>();
 		for (Vehicle v : vehicles) {
-			if (v.capacity() >= weight + v.getCurrentTasks().weightSum()) {
+			if (v.capacity() >= weight + v.getCurrentTasks().weightSum()) { // TODO : check this
 				result.add(v);
 			}
 		}
@@ -467,13 +453,13 @@ public class Planner {
 
 	private static Variables randomChangeVehicle(Variables A, List<Vehicle> vehicleInOrder) {
 		// Choose a random task, among all available
-		TaskSet tasks = A.allTasks;
+		Set<Task> tasks = A.allTasks;
 
 		int taskIndex = random.nextInt(tasks.size());
 		int i = 0;
 		Task task = null;
 
-		for (Task t : tasks) { // tasks iterator is in a deterministic order
+		for (Task t : tasks) {
 			if (i == taskIndex) {
 				task = t;
 				break;
@@ -640,18 +626,21 @@ public class Planner {
 
 
 	public static void randomInsertTask(Variables variables, Task task, List<Vehicle> orderedVehicles) {
-
 		List<Vehicle> potentialVehicles = vehiclesWithSufficientCapacity(orderedVehicles, task.weight);
 		Vehicle vehicle = potentialVehicles.get(AuctionAgent.random.nextInt(potentialVehicles.size()));
+
 		ActionV2 pickupAction = new ActionV2(true, task);
 		variables.actions.get(vehicle).add(pickupAction);
 		int actionTime = variables.actions.get(vehicle).size();
 		variables.timing.put(pickupAction, actionTime);
 		variables.vehicles.put(pickupAction, vehicle);
+
 		ActionV2 deliveryAction = new ActionV2(false, task);
 		variables.actions.get(vehicle).add(deliveryAction);
 		variables.timing.put(deliveryAction, actionTime + 1);
 		variables.vehicles.put(deliveryAction, vehicle);
+
+		variables.allTasks.add(task);
 	}
 
 
