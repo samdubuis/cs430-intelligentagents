@@ -576,55 +576,6 @@ public class Planner {
 		}
 	}
 
-
-	public static Variables planWithFirstSolution(long allowedTime, Variables A, List<Vehicle> vehiclesInOrder) {
-
-		long time_start = System.currentTimeMillis();
-		long elapsedTime = 0;
-
-		List<Variables> history = new ArrayList<Variables>();
-		history.add(A);
-		int noImprovementCount = 0;
-
-		double bestCost = cost(A, vehiclesInOrder);
-		Variables bestVariables = A;
-
-		while (elapsedTime < allowedTime) {
-			double previousCost = cost(A, vehiclesInOrder);
-
-			List<Variables> neighbors = chooseNeighbors(A, CHANGE_VEHICLE_COUNT, CHANGE_ORDER_COUNT, vehiclesInOrder);
-			neighbors.add(A);
-			A = localChoice(neighbors, vehiclesInOrder);
-
-			double currentCost = cost(A, vehiclesInOrder);
-			if (currentCost < bestCost) {
-				bestCost = currentCost;
-				bestVariables = A;
-			}
-
-			if (currentCost < previousCost) {
-				noImprovementCount = 0;
-				history.add(A);
-			}
-
-			if (currentCost == previousCost) {
-				noImprovementCount++;
-				if (noImprovementCount >= NO_IMPROVEMENT_THRESHOLD) {
-					noImprovementCount = 0;
-					//System.out.println("ROLLBACK");
-					int index = Math.max(history.size() - ROLLBACK_DEPTH, 1);
-					history = history.subList(0, index);
-					A = history.get(history.size() - 1);
-				}
-			}
-
-			elapsedTime = System.currentTimeMillis() - time_start;
-		}
-
-		return bestVariables;
-	}
-
-
 	public static boolean randomInsertTask(Variables variables, Task task, List<Vehicle> orderedVehicles) {
 		List<Vehicle> potentialVehicles = vehiclesWithSufficientCapacity(orderedVehicles, task.weight);
 		if(potentialVehicles.size() <= 0)

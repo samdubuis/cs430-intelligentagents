@@ -246,7 +246,7 @@ public class AuctionAgent implements AuctionBehavior {
 			return null;
 
 		// Refine the next variables by calling the planner
-		nextVariables = Planner.planWithFirstSolution(l - elapsedTime, nextVariables, orderedVehicles);
+		nextVariables = Planner.restartIterations(l - elapsedTime, nextVariables, orderedVehicles);
 		return nextVariables;
 	}
 
