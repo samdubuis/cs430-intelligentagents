@@ -25,7 +25,7 @@ import java.util.*;
 public class AuctionAgent implements AuctionBehavior {
 
 	private static final double AGGRESSIVITY_POSITIVE = 0.8;
-	private static final double AGGRESSIVITY_NEGATIVE = -0.2;
+	private static final double AGGRESSIVITY_NEGATIVE = -0.4;
 	private static final double ADVERSARY_MARGIN_RATIO = 0.4;
 
 	private Topology topology;
