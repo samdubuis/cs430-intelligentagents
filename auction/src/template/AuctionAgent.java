@@ -92,8 +92,13 @@ public class AuctionAgent implements AuctionBehavior {
 	public Long askPrice(Task task) {
 		long aimedTime = (long) Math.max((timeoutBid - 300) * 0.9, timeoutBid * 0.5);
 
-		long ourCost = ourBiasedMarginalCost(task, aimedTime / 2);
-		long adversCost = adversBiasedMarginalCost(task, aimedTime / 2);
+		Long ourCost = ourBiasedMarginalCost(task, aimedTime / 2);
+		if (ourCost == null) // this task is impossible for us
+			return null;
+
+		Long adversCost = adversBiasedMarginalCost(task, aimedTime / 2);
+		if (adversCost == null) // this should not happen, since we suppose adversary has same vehicles as we do
+			return (long) (1.1 * ourCost);
 
 		long bid = costComparisonBid(ourCost, adversCost);
 		System.out.println("Our cost: " + ourCost + ", their cost: " + adversCost + ", our bid: " + bid);
@@ -129,15 +134,15 @@ public class AuctionAgent implements AuctionBehavior {
 
 	// ----------------
 
-	private long adversBiasedMarginalCost(Task task, long l) {
-		long cost = adversMarginalCost(task, l);
+	private Long adversBiasedMarginalCost(Task task, long l) {
+		Long cost = adversMarginalCost(task, l);
 		int acceptedTasks = getAdversaryTaskCount();
 		return biasedMarginalCost(task, cost, acceptedTasks);
 	}
 
 
-	private long ourBiasedMarginalCost(Task task, long l) {
-		long cost = ourMarginalCost(task, l);
+	private Long ourBiasedMarginalCost(Task task, long l) {
+		Long cost = ourMarginalCost(task, l);
 		int acceptedTasks = getSelfTaskCount();
 		return biasedMarginalCost(task, cost, acceptedTasks);
 	}
@@ -160,7 +165,10 @@ public class AuctionAgent implements AuctionBehavior {
 	}
 
 	// function to compute the biased marginal cost
-	private Long biasedMarginalCost(Task task, long cost, int acceptedTasks) {
+	private Long biasedMarginalCost(Task task, Long cost, int acceptedTasks) {
+		if (cost == null)
+			return null;
+
 		double tch = TCH(acceptedTasks);
 		double tdh = TDH(task, acceptedTasks);
 		double ch = CH(task, acceptedTasks);
@@ -211,30 +219,37 @@ public class AuctionAgent implements AuctionBehavior {
 
 
 	// Marginal cost for ourselves and for adversary
-	private Variables marginalCost(Task task, long l, Variables currentVars, List<Vehicle> orderedVehicles) {
+	private Variables getNextVariables(Task task, Variables currentVars, List<Vehicle> orderedVehicles, long l) {
 		long startTime = System.currentTimeMillis();
 		// Copy the current variables so that they are not modified at the end
 		Variables nextVariables = new Variables(currentVars);
 		// Insert the new task randomly into the next variables
-		Planner.randomInsertTask(nextVariables, task, orderedVehicles);
+		boolean success = Planner.randomInsertTask(nextVariables, task, orderedVehicles);
 		long elapsedTime = System.currentTimeMillis() - startTime;
+
+		if (!success)
+			return null;
 
 		// Refine the next variables by calling the planner
 		nextVariables = Planner.planWithFirstSolution(l - elapsedTime, nextVariables, orderedVehicles);
 		return nextVariables;
 	}
 
-	private long ourMarginalCost(Task task, long l) {
-		Variables nextVariables = marginalCost(task, l, ourVar, agent.vehicles());
-		ourPotentialNextVar = nextVariables;
+	private Long ourMarginalCost(Task task, long l) {
+		Variables nextVariables = getNextVariables(task, ourVar, agent.vehicles(), l);
+		if (nextVariables == null)
+			return null;
 
+		ourPotentialNextVar = nextVariables;
 		return (long) (Planner.cost(nextVariables, agent.vehicles()) - Planner.cost(ourVar, agent.vehicles()));
 	}
 
-	private long adversMarginalCost(Task task, long l) {
-		Variables nextVariables = marginalCost(task, l, adversVar, adversVehicle);
-		adversPotentialNextVar = nextVariables;
+	private Long adversMarginalCost(Task task, long l) {
+		Variables nextVariables = getNextVariables(task, adversVar, adversVehicle, l);
+		if (nextVariables == null)
+			return null;
 
+		adversPotentialNextVar = nextVariables;
 		return (long) (Planner.cost(nextVariables, adversVehicle) - Planner.cost(adversVar, adversVehicle));
 	}
 

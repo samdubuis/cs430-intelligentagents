@@ -625,8 +625,11 @@ public class Planner {
 	}
 
 
-	public static void randomInsertTask(Variables variables, Task task, List<Vehicle> orderedVehicles) {
+	public static boolean randomInsertTask(Variables variables, Task task, List<Vehicle> orderedVehicles) {
 		List<Vehicle> potentialVehicles = vehiclesWithSufficientCapacity(orderedVehicles, task.weight);
+		if(potentialVehicles.size() <= 0)
+			return false;
+
 		Vehicle vehicle = potentialVehicles.get(AuctionAgent.random.nextInt(potentialVehicles.size()));
 
 		ActionV2 pickupAction = new ActionV2(true, task);
@@ -641,6 +644,7 @@ public class Planner {
 		variables.vehicles.put(deliveryAction, vehicle);
 
 		variables.allTasks.add(task);
+		return true;
 	}
 
 
