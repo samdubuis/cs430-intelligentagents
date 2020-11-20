@@ -24,7 +24,10 @@ import java.util.*;
 @SuppressWarnings("unused")
 public class AuctionAgent implements AuctionBehavior {
 
-	private static final double AGGRESSIVITY = 0.75;
+	private static final double AGGRESSIVITY_POSITIVE = 0.8;
+	private static final double AGGRESSIVITY_NEGATIVE = -0.2;
+	private static final double ADVERSARY_MARGIN_RATIO = 0.4;
+
 	private Topology topology;
 	private TaskDistribution distribution;
 	private Agent agent;
@@ -62,7 +65,7 @@ public class AuctionAgent implements AuctionBehavior {
 
 		adversBids = new ArrayList<Long>();
 		adversVehicle = createRandomVehicles();
-		adversMargin = 1;
+		adversMargin = 0;
 		ourVar = Planner.firstSolution(new HashSet<Task>(), agent.vehicles());
 		adversVar = Planner.firstSolution(new HashSet<Task>(), adversVehicle);
 
@@ -89,16 +92,16 @@ public class AuctionAgent implements AuctionBehavior {
 			System.out.println("They won: " + ourBid + " " + Arrays.toString(bids));
 		}
 
-		/*if (round >= 5 && adversTotalCost > 0) {
+		if (round >= 5 && adversTotalCost > 0) {
 			// Estimate adversary's costs more precisely
 			long adversTotalBids = 0;
 			for (Long b : adversBids) {
 				if (b != null)
 					adversTotalBids += b;
 			}
-			adversMargin = 1 + AGGRESSIVITY * Math.max(0, adversTotalBids / adversTotalCost - 1);
+			adversMargin = Math.max(0, (adversTotalBids - adversTotalCost) / round); //1 + AGGRESSIVITY * Math.max(0, adversTotalBids / adversTotalCost - 1);
 			System.out.println("Estimated margin: " + adversMargin);
-		}*/
+		}
 		round++;
 	}
 
@@ -114,8 +117,8 @@ public class AuctionAgent implements AuctionBehavior {
 		if (adversCost == null) // this should not happen, since we suppose adversary has same vehicles as we do
 			return (long) (1.1 * ourCost);
 
-		long bid = costComparisonBid(ourCost, adversMargin * adversCost);
-		System.out.println("Our cost: " + ourCost + ", their cost: " + adversCost + " (" + adversMargin * adversCost + "), our bid: " + bid);
+		long bid = costComparisonBid(ourCost, adversCost);
+		System.out.println("Our cost: " + ourCost + ", their cost: " + adversCost + " (" + (adversCost + adversMargin) + "), our bid: " + bid);
 
 		// idea TODO do not bid more than 80% of opponent's median bid in order to not let him do very high bid against us
 //		if(round > 4) {
@@ -349,12 +352,13 @@ public class AuctionAgent implements AuctionBehavior {
 	private long costComparisonBid(double ourCost, double adversCost) {
 		long bid;
 
-		double deltaMC = Math.abs(adversCost - ourCost);
+		double adversBid = adversCost + ADVERSARY_MARGIN_RATIO * adversMargin;
+		double deltaMC = Math.abs(adversBid - ourCost);
 
-		if (ourCost <= adversCost) {
-			bid = (long) (ourCost + deltaMC * AGGRESSIVITY);
+		if (ourCost <= adversBid) {
+			bid = (long) (ourCost + deltaMC * AGGRESSIVITY_POSITIVE);
 		} else {
-			bid = (long) (ourCost + deltaMC * (AGGRESSIVITY - 1));
+			bid = (long) (ourCost + deltaMC * AGGRESSIVITY_NEGATIVE);
 		}
 
 		return bid;
