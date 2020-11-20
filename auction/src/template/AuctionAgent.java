@@ -40,6 +40,8 @@ public class AuctionAgent implements AuctionBehavior {
 	private Variables adversPotentialNextVar;
 	private List<Long> adversBids;
 	private List<Vehicle> adversVehicle;
+	private double adversTotalCost;
+	private double adversMargin;
 
 	private Map<City, Double> TDH;
 	private double connectivity;
@@ -60,6 +62,7 @@ public class AuctionAgent implements AuctionBehavior {
 
 		adversBids = new ArrayList<Long>();
 		adversVehicle = createRandomVehicles();
+		adversMargin = 1;
 		ourVar = Planner.firstSolution(new HashSet<Task>(), agent.vehicles());
 		adversVar = Planner.firstSolution(new HashSet<Task>(), adversVehicle);
 
@@ -85,6 +88,17 @@ public class AuctionAgent implements AuctionBehavior {
 			adversVar = adversPotentialNextVar;
 			System.out.println("They won: " + ourBid + " " + Arrays.toString(bids));
 		}
+
+		/*if (round >= 5 && adversTotalCost > 0) {
+			// Estimate adversary's costs more precisely
+			long adversTotalBids = 0;
+			for (Long b : adversBids) {
+				if (b != null)
+					adversTotalBids += b;
+			}
+			adversMargin = 1 + AGGRESSIVITY * Math.max(0, adversTotalBids / adversTotalCost - 1);
+			System.out.println("Estimated margin: " + adversMargin);
+		}*/
 		round++;
 	}
 
@@ -100,8 +114,8 @@ public class AuctionAgent implements AuctionBehavior {
 		if (adversCost == null) // this should not happen, since we suppose adversary has same vehicles as we do
 			return (long) (1.1 * ourCost);
 
-		long bid = costComparisonBid(ourCost, adversCost);
-		System.out.println("Our cost: " + ourCost + ", their cost: " + adversCost + ", our bid: " + bid);
+		long bid = costComparisonBid(ourCost, adversMargin * adversCost);
+		System.out.println("Our cost: " + ourCost + ", their cost: " + adversCost + " (" + adversMargin * adversCost + "), our bid: " + bid);
 
 		// idea TODO do not bid more than 80% of opponent's median bid in order to not let him do very high bid against us
 //		if(round > 4) {
@@ -116,19 +130,17 @@ public class AuctionAgent implements AuctionBehavior {
 		long aimedTime = (long) Math.max((timeoutPlan - 300) * 0.9, timeoutPlan * 0.5);
 
 		Planner.Variables bestVarFromScratch = Planner.plan(vehicles, tasks, aimedTime);
-		Planner.Variables bestPlans;
 
-		if (ourVar != null && Planner.cost(bestVarFromScratch, vehicles) > Planner.cost(ourVar, vehicles)) {
-			bestPlans = ourVar;
+		if (ourVar == null || Planner.cost(bestVarFromScratch, vehicles) <= Planner.cost(ourVar, vehicles)) {
 			//System.err.println("Using scratch variables");
+			ourVar = bestVarFromScratch;
 		} else {
 			//System.err.println("Using old variables");
-			bestPlans = bestVarFromScratch;
 		}
 
 		//System.out.println("Final cost: " + bestPlans.cost(vehicles));
 
-		return Planner.computePlans(bestPlans, vehicles, tasks);
+		return Planner.computePlans(ourVar, vehicles, tasks);
 	}
 
 
@@ -250,7 +262,9 @@ public class AuctionAgent implements AuctionBehavior {
 			return null;
 
 		adversPotentialNextVar = nextVariables;
-		return (long) (Planner.cost(nextVariables, adversVehicle) - Planner.cost(adversVar, adversVehicle));
+		double marginalCost = Planner.cost(nextVariables, adversVehicle) - Planner.cost(adversVar, adversVehicle);
+		adversTotalCost += marginalCost;
+		return (long) marginalCost;
 	}
 
 
@@ -332,10 +346,10 @@ public class AuctionAgent implements AuctionBehavior {
 	// -------------
 	// divers functions
 
-	private long costComparisonBid(long ourCost, long adversCost) {
+	private long costComparisonBid(double ourCost, double adversCost) {
 		long bid;
 
-		long deltaMC = Math.abs(adversCost - ourCost);
+		double deltaMC = Math.abs(adversCost - ourCost);
 
 		if (ourCost <= adversCost) {
 			bid = (long) (ourCost + deltaMC * AGGRESSIVITY);
